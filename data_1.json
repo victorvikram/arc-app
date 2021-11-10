@@ -1,0 +1,28 @@
+{
+    "category": "letter",
+    "id": 2,
+    "context_type": "string", 
+    "stimulus_type": "string", 
+    "answer_type": "string",
+
+    "mode": "generate",
+
+    "context": [
+        {
+            "rows": 1,
+            "cols": 2,
+            "items": ["abc", "abd"]
+        }
+    ],
+    "questions": [
+        {
+            "stimulus": {
+                "rows": 1, 
+                "cols": 1,
+                "items": ["xyz"]
+            },
+            "choices": [],
+            "answer": "wyz"
+        }
+    ]
+}
