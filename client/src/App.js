@@ -1,6 +1,5 @@
 import './App.css';
-import React from 'react'
-
+import React from 'react';
 
 class ToggleAnswerButton extends React.Component {
   calculateText() {
@@ -67,7 +66,6 @@ class Canvas extends React.Component {
       9: "rgb(130, 15, 35)",
       10:"rgb(255, 255, 255)"
     }
-    console.log("drawing categorical")
     const canvas = this.canvasRef.current;
     const ctx = canvas.getContext('2d');
 
@@ -119,26 +117,26 @@ class Canvas extends React.Component {
 class ProblemViewer extends React.Component {
   constructor(props) {
     super(props)
-    this.state = {problem_type: "", problem_type_choices: [""], problem_name: "", problem_choices: [""], problem_data: {}}
+    this.state = {problem_type: "all", problem_type_choices: [""], problem_name: "", problem_choices: [""], problem_data: {}}
     this.handleProblemTypeChange = this.handleProblemTypeChange.bind(this)
     this.handleProblemChange = this.handleProblemChange.bind(this)
   }
 
   getProblemTypes() {
-    let requestUrl = `http://localhost:3001/api/categories`
+    let requestUrl = `/api/categories`
     fetch(requestUrl)
       .then((res) => res.json())
       .then((data) => {
-        data.unshift("");
-        this.setState({problem_type: "", problem_type_choices: data}, (state) => {
+        data.unshift("all");
+        this.setState({problem_type: "all", problem_type_choices: data}, (state) => {
           this.getRelevantProblems();
         });
       })
   }
 
   getRelevantProblems() {
-    let url_tail = this.state.problem_type === "" ? "all" : this.state.problem_type;
-    let requestUrl = `http://localhost:3001/api/${url_tail}`
+    let url_tail = this.state.problem_type === "all" ? "all" : this.state.problem_type;
+    let requestUrl = `/api/${url_tail}`
     fetch(requestUrl)
       .then((res) => res.json())
       .then((data) => {
@@ -147,18 +145,16 @@ class ProblemViewer extends React.Component {
         for(var i = 0; i < data.length; i++) {
           ids.push(data[i].id);
         }
-        console.log(ids)
         this.setState({problem: "", problem_choices: ids});
       })
   }
 
   getProblem() {
     if(this.state.problem_name !== "") {
-      let requestUrl = `http://localhost:3001/api/${this.state.problem_type}/${this.state.problem_name}`
+      let requestUrl = `/api/${this.state.problem_type}/${this.state.problem_name}`
       fetch(requestUrl)
         .then((res) => res.json())
         .then((data) => {
-          console.log("got the new problem data");
           this.setState({problem_data: data});
         })
     }
@@ -170,7 +166,6 @@ class ProblemViewer extends React.Component {
 
   handleProblemTypeChange(event) {
     if(event.target.value !== this.state.problem_type) {
-      console.log(event.target.value)
       this.setState({problem_type: event.target.value}, (state) => {
         this.getRelevantProblems()
       });
@@ -187,7 +182,6 @@ class ProblemViewer extends React.Component {
     var problem_part;
     var data = this.state.problem_data
     if(data && Object.keys(data).length === 0) {
-      console.log("problem data is empty")
       problem_part = []
     } else {
       problem_part = (
@@ -247,20 +241,27 @@ class QuestionViewer extends React.Component {
 
 class AnswerViewer extends React.Component {
   constructor(props) {
-    super(props)
-    this.state = {show: false}
+    super(props);
+    this.state = {show: false, answer: this.props.answer}
     this.onButtonPress = this.onButtonPress.bind(this)
   }
+
   onButtonPress() {
-    this.setState({show: !this.state.show})
+    this.setState({show: !this.state.show, answer: this.props.answer})
   }
 
-
   render() {
-    var comps = [<ToggleAnswerButton key={0} onClick={this.onButtonPress} show={this.state.show} />]
+    var comps = [<ToggleAnswerButton key={0} onClick={this.onButtonPress} show={this.props.show} />]
     
-    if(this.state.show) {
+    // show the answer if the state 
+    if(this.state.show && (this.props.answer === this.state.answer)) {
       comps.push(<ContentSquare key={1} type={this.props.type} data={this.props.answer} />)
+    }
+    else if (this.state.show) {
+      this.setState({show: false, answer: this.props.answer})
+    }
+    else if (this.props.answer !== this.state.answer) {
+      this.setState({answer: this.props.answer})
     }
 
     return (
@@ -346,7 +347,6 @@ class ContextViewer extends React.Component {
   }
 
   render() {
-    console.log("rendering contextviewer")
     var tables = this.getTables()
     return (
       <div className='side_by_side'>{tables}</div>
@@ -372,6 +372,7 @@ class ContentSquare extends React.Component {
     return <div>{thing}</div>
   }
 }
+
 
 function App() {
   return (

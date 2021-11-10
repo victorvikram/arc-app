@@ -2,11 +2,13 @@ const express = require('express');
 const bodyParser = require('body-parser')
 const MongoClient = require('mongodb').MongoClient
 const cors = require('cors');
+const path = require('path');
+const { Console } = require('console');
+
 const app = express();
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cors());
-
 
 const PORT = process.env.PORT || 3001;
 
@@ -19,12 +21,6 @@ MongoClient.connect(connectionString, (err, client) => {
 
     const db = client.db('problems');
     const problemCollection = db.collection('problems');
-
-    
-
-    app.get('/', (req, res) => {
-        res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
-    });
 
     app.get('/api/:category', (req, res) => {
         var cat = req.params.category;
@@ -43,37 +39,7 @@ MongoClient.connect(connectionString, (err, client) => {
             res.json(results);
         })
         .catch(error => console.log(error));
-    })
-
-/*
-    app.get('/api/:category', (req, res) => {
-        console.log("in the category api call " + cat);
-        var cat = req.params.category
-        if(cat === "categories") {
-            query = 
-            problemCollection.distinct("category")
-                .then(results => {
-                    res.json(results);
-                })
-                .catch(error => console.log(error));
-        }   
-        else if(cat === "all") {
-            problemCollection.find().project({id: 1, _id: 0}).toArray()
-                .then(results => {
-                    res.json(results);
-                })
-                .catch(error => console.log(error))
-        }
-        else {
-            problemCollection.find({category: cat}).project({id: 1, _id: 0}).toArray()
-                .then(results => {
-                    res.json(results);
-                })
-                .catch(error => console.log(error))
-        }
-        
-    })
-*/
+    });
 
     app.get('/api/:category/:problem', (req, res) => {
         prob = req.params.problem
@@ -82,21 +48,33 @@ MongoClient.connect(connectionString, (err, client) => {
                 res.json(results[0]);
             })
             .catch(error => console.log(error))
-    })
+    });
 
-    app.post('/quotes', (req, res) => {
-        quotesCollection.insertOne(req.body)
-            .then(result => {
-                console.log(result);
-            })
-            .catch(error => console.error(error))
+    app.get('/api', (req, res) => {
+        res.json({message: "hi"});
+    });
 
-        res.redirect("/");
-    })
+    app.get("/", (req, res) => {
+        console.log(path.resolve(__dirname, '../client/build', 'index.html'));
+        res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
+    });
+
+    app.use(express.static(path.resolve(__dirname, '../client/build')));
+
+    /*
+    app.get("/static/:lang/:fname", (req, res) => {
+        var lang = req.params.lang;
+        var fname = req.params.fname;
+
+        var pth = path.resolve(__dirname, '../client/build/static', lang, fname);
+        console.log(pth);
+        res.sendFile(pth);
+    });
+    */
 
     app.listen(PORT, function() {
         console.log(`listening on ${PORT}`);
-    })
+    });
 
 })
 
