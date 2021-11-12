@@ -1,8 +1,6 @@
 {
     "category": "letter",
-    "id": 3,
-    "context_type": "string", 
-    "stimulus_type": "string", 
+    "id": "letter-3", 
     "answer_type": "string",
 
     "mode": "generate",
@@ -11,6 +9,7 @@
         {
             "rows": 1,
             "cols": 2,
+            "type": "string",
             "items": ["abc", "abd"]
         }
     ],
@@ -19,10 +18,11 @@
             "stimulus": {
                 "rows": 1, 
                 "cols": 1,
-                "items": ["xyz"]
+                "type": "string",
+                "items": ["iijjkk"]
             },
             "choices": [],
-            "answer": "wyz"
+            "answer": "iijjll"
         }
     ]
 }

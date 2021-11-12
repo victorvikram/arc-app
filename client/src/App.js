@@ -1,6 +1,8 @@
 import './App.css';
 import React from 'react';
 
+var fixed_problem; // = require('./fixed_data/img_data.json');
+
 class ToggleAnswerButton extends React.Component {
   calculateText() {
     if(this.props.show) {
@@ -117,7 +119,8 @@ class Canvas extends React.Component {
 class ProblemViewer extends React.Component {
   constructor(props) {
     super(props)
-    this.state = {problem_type: "all", problem_type_choices: [""], problem_name: "", problem_choices: [""], problem_data: {}}
+    var problem_data = fixed_problem == null ? {} : fixed_problem;
+    this.state = {problem_type: "all", problem_type_choices: [""], problem_name: "", problem_choices: [""], problem_data: problem_data, description: ""}
     this.handleProblemTypeChange = this.handleProblemTypeChange.bind(this)
     this.handleProblemChange = this.handleProblemChange.bind(this)
   }
@@ -140,13 +143,29 @@ class ProblemViewer extends React.Component {
     fetch(requestUrl)
       .then((res) => res.json())
       .then((data) => {
-        data.unshift("");
         var ids = []
         for(var i = 0; i < data.length; i++) {
-          ids.push(data[i].id);
+          if(data[i].hasOwnProperty('id')) {
+            ids.push(data[i].id);
+          }
         }
+        ids.unshift("");
         this.setState({problem: "", problem_choices: ids});
-      })
+      });
+  }
+
+  getDescription() {
+    console.log("getting description");
+    let requestUrl = `/api/${this.state.problem_type}/${this.state.problem_name}/description`;
+    fetch(requestUrl)
+        .then((res) => {
+          console.log(res);
+          return res.json();
+        })
+        .then((data) => {
+          console.log(JSON.stringify(data));
+          this.setState({description: data.description});
+        });
   }
 
   getProblem() {
@@ -155,8 +174,13 @@ class ProblemViewer extends React.Component {
       fetch(requestUrl)
         .then((res) => res.json())
         .then((data) => {
-          this.setState({problem_data: data});
-        })
+          if(fixed_problem == null) {
+            // console.log("fixed_problem is null");
+            this.setState({problem_data: data}, (state) => {
+              this.getDescription();
+            })
+          }
+        });
     }
   }
 
@@ -181,13 +205,18 @@ class ProblemViewer extends React.Component {
   render() {
     var problem_part;
     var data = this.state.problem_data
+    console.log(this.state.description)
     if(data && Object.keys(data).length === 0) {
       problem_part = []
     } else {
+      // console.log("supposedly setting problem type")
       problem_part = (
+        <div>
+        <div>{this.state.description}</div>
         <div className='side_by_side'>
-          <ContextViewer type={this.state.problem_data.context_type} grids={this.state.problem_data.context}/>
-          <TestViewer stimulus_type={this.state.problem_data.stimulus_type} answer_type={this.state.problem_data.answer_type} questions={this.state.problem_data.questions} />
+          <ContextViewer grids={this.state.problem_data.context} />
+          <TestViewer answer_type={this.state.problem_data.answer_type} questions={this.state.problem_data.questions} />
+        </div>
         </div>
       )
     }
@@ -208,7 +237,7 @@ class QuestionViewer extends React.Component {
     var rows = this.props.data.stimulus.rows;
     var cols = this.props.data.stimulus.cols;
     if(rows > 0 && cols > 0) {
-      comps.push(<GridViewer key={0} rows={rows} cols={cols} items={this.props.data.stimulus.items} type={this.props.stimulus_type}/>);
+      comps.push(<GridViewer key={0} rows={rows} cols={cols} items={this.props.data.stimulus.items} type={this.props.data.stimulus.type}/>);
     }
   }
 
@@ -274,7 +303,7 @@ class TestViewer extends React.Component {
   generateQuestionDivs() {
     var questions = []
     for(var i = 0; i < this.props.questions.length; i++) {
-      questions.push(<QuestionViewer key={i} data={this.props.questions[i]} answer_type={this.props.answer_type} stimulus_type={this.props.stimulus_type}/>)
+      questions.push(<QuestionViewer key={i} data={this.props.questions[i]} answer_type={this.props.answer_type} />)
     }
 
     return questions
@@ -307,6 +336,7 @@ class GridViewer extends React.Component {
       for (var j = 0; j < this.props.cols; j++) {
         var item_index = i * this.props.cols + j;
         var data = this.getRelevantData(this.props.items, item_index);
+        //console.log("item_index", item_index, this.props.items.length, this.props.rows, this.props.cols);
         row.push(<td key={item_index}><ContentSquare type={this.props.type} data={data}/></td>);
       }
       table.push(<tr key={i}>{row}</tr>);
@@ -341,7 +371,7 @@ class ContextViewer extends React.Component {
   getTables() {
     var tables = [];
     for(var i = 0; i < this.props.grids.length; i++) {
-      tables.push(<GridViewer key={i} rows={this.props.grids[i].rows} cols={this.props.grids[i].cols} items={this.props.grids[i].items} type={this.props.type} />)
+      tables.push(<GridViewer key={i} rows={this.props.grids[i].rows} cols={this.props.grids[i].cols} items={this.props.grids[i].items} type={this.props.grids[i].type} />)
     }
     return tables
   }
@@ -361,6 +391,7 @@ class ContentSquare extends React.Component {
     } else if(this.props.type === "string") {
       return this.props.data
     } else if(this.props.type === "grayscale" || this.props.type === "categorical_list") {
+      //console.log("supposedly rendering some canvases")
       return <Canvas type={this.props.type} data={this.props.data} />
     } else if(this.props.type === "number") {
       return this.props.data

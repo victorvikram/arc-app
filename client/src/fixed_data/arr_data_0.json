@@ -1,8 +1,6 @@
 {
     "category": "arc",
-    "id": 1,
-    "context_type": "categorical_list", 
-    "stimulus_type": "categorical_list", 
+    "id": "arc-1",
     "answer_type": "categorical_list",
 
     "mode": "generate",
@@ -11,6 +9,7 @@
         {
             "rows": 4,
             "cols": 2,
+            "type": "categorical_list", 
             "items": [[[2, 2, 1], [2, 1, 2], [2, 8, 1]],[[1, 8, 2], [2, 1, 2], [1, 2, 2]],[[9, 2, 4], [2, 4, 4], [2, 9, 2]],[[2, 9, 2], [4, 4, 2], [4, 2, 9]],[[8, 8, 8], [5, 5, 8], [8, 5, 5]],[[5, 5, 8], [8, 5, 5], [8, 8, 8]],[[3, 2, 9], [9, 9, 9], [2, 3, 3]],[[3, 3, 2], [9, 9, 9], [9, 2, 3]]]
         }
     ],
@@ -19,6 +18,7 @@
             "stimulus": {
                 "rows": 1, 
                 "cols": 1,
+                "type": "categorical_list",
                 "items": [[[6, 4, 4], [6, 6, 4], [4, 6, 7]]]
             },
             "choices": [],

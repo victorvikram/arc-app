@@ -1,0 +1,4 @@
+{
+    "category": "arcrecognition",
+    "description": "Choose the relevant concept from the list on the left, and then partition the 12 stimuli according to that concept (works with any fixed list of concepts, e.g. core concepts)"
+}

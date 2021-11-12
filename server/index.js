@@ -4,6 +4,7 @@ const MongoClient = require('mongodb').MongoClient
 const cors = require('cors');
 const path = require('path');
 const { Console } = require('console');
+const { query } = require('express');
 
 const app = express();
 
@@ -42,12 +43,33 @@ MongoClient.connect(connectionString, (err, client) => {
     });
 
     app.get('/api/:category/:problem', (req, res) => {
+        var query;
         prob = req.params.problem
+        cat =  req.params.category
+
         problemCollection.find({id: prob}).toArray()
             .then(results => {
-                res.json(results[0]);
+                elt = results.find(el => Object.keys(el).length !== 0);
+                res.json(elt);
             })
-            .catch(error => console.log(error))
+            .catch(error => console.log(error));
+        
+    });
+
+    app.get('/api/:category/:problem/description', (req, res) => {
+        prob = req.params.problem
+        cat =  req.params.category
+
+        if(cat === "all") {
+            cat = prob.split("-")[0];
+        }
+        
+        problemCollection.find({category: cat}).project({description: 1, _id: 0}).toArray().then(results => {
+            elt = results.find(el => Object.keys(el).length !== 0);
+            res.json(elt);
+        })
+        .catch(error => console.log(error));
+        
     });
 
     app.get('/api', (req, res) => {

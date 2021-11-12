@@ -1,0 +1,4 @@
+{
+    "category": "arcabstraction",
+    "description": "Decide whether each stimulus belongs to the left category or the right category (different from bongard as it is best done with non-core concepts, so the system must form its own concepts)."
+}

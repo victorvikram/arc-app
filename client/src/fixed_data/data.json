@@ -1,8 +1,6 @@
 {
     "category": "letter",
-    "id": 0,
-    "context_type": "string", 
-    "stimulus_type": "string", 
+    "id": "letter-4",
     "answer_type": "string",
 
     "mode": "generate",
@@ -11,6 +9,7 @@
         {
             "rows": 1,
             "cols": 2,
+            "type": "string",
             "items": ["abc", "abd"]
         }
     ],
@@ -19,6 +18,7 @@
             "stimulus": {
                 "rows": 1, 
                 "cols": 1,
+                "type": "string",
                 "items": ["ijk"]
             },
             "choices": [],
@@ -28,6 +28,7 @@
             "stimulus": {
                 "rows": 1, 
                 "cols": 1,
+                "type": "string",
                 "items": ["pqr"]
             },
             "choices": [],
