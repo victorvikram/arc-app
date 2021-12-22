@@ -1,0 +1,27 @@
+{
+    "category": "1darc",
+    "id": "1darc-0", 
+    "answer_type": "categorical_list",
+    "mode": "generate",
+
+    "context": [
+        {
+            "rows": 1,
+            "cols": 2,
+            "type": "categorical_list",
+            "items": [[[1,1,1,0,1,5,1,0,1,1,0]], [[2,0,2,0,0]]]
+        }
+    ],
+    "questions": [
+        {
+            "stimulus": {
+                "rows": 1, 
+                "cols": 1,
+                "type": "categorical_list",
+                "items": [[[1,1,1,1,0,5,0,1,1,0,1]]]
+            },
+            "choices": [],
+            "answer": [[0,2,2,0,0]]
+        }
+    ]
+}

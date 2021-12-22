@@ -1,7 +1,9 @@
 import './App.css';
-import React from 'react';
+import React, { useState } from 'react';
+import Editor from "./components/Editor";
+import "./styles/App.scss";
 
-var fixed_problem; // = require('./fixed_data/img_data.json');
+var fixed_problem; // = require('./fixed_data/arr_data_4.json');
 
 class ToggleAnswerButton extends React.Component {
   calculateText() {
@@ -75,7 +77,7 @@ class Canvas extends React.Component {
     var ch = canvas.height;
     var rows = this.props.data.length;
     var cols = this.props.data[0].length;
-    var padding = 1;
+    var padding = 0.5;
     var w = (cw - (padding * cols)) / cols;
     var h = (ch - (padding * rows)) / rows;
     w = Math.min(w, h);
@@ -406,9 +408,22 @@ class ContentSquare extends React.Component {
 
 
 function App() {
+  const [mode, setMode] = useState("create");
+
+
+
   return (
     <div className="App">
-      <ProblemViewer />
+      <div>
+        <button onClick={() => setMode("create")} className="button">Creator</button>
+        <button onClick={() => setMode("view")} className="button">Viewer</button>
+      </div>
+      {mode === "view" &&
+        <ProblemViewer />
+      }
+      {mode === "create" &&
+        <Editor />
+      }
     </div>
   );
 }
