@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import "../styles/editor.scss";
-import DrawingPanel from "./DrawingPanel";
+import InputGrid from "./DrawingPanel";
 
 export const colors = ["#000000", "#0068cf", "#ff3937", "#00c443", "#ffd631", "#a0a0a0", "#f916b1", "#ff7a2c", "#63d6fc", "#820f23"]
 
@@ -40,24 +40,13 @@ export function NumberInput(props) {
 
 export default function Editor() {
 
-    const [problemId, setProblemId] = useState("arc-0")
-    const [problemCat, setProblemCat] = useState("arc")
+    const [problemId, setProblemId] = useState("arc-0");
+    const [problemCat, setProblemCat] = useState("arc");
+    const [defaultGridType, setDefaultGridType] = useState("pixels");
     const [multipleChoice, setMultipleChoice] = useState(false);
     const [currentItemIndexTrail, setCurrentItemIndexTrail] = useState(["context", 0, null]);
-    const [hideOptions, setHideOptions] = useState(true);
-    const [hideDrawingPanel, setHideDrawingPanel] = useState(true);
-    const [buttonText, setButtonText] = useState("start drawing");
-    const [problem, setProblem] = useState({"context": [[[createScene()]]], "questions": [{"stimulus": [[createScene()]], "answer": [createScene()], "correct": 0}]});
+    const [problem, setProblem] = useState({"context": [[[createDefaultGridCell()]]], "questions": [{"stimulus": [[createDefaultGridCell()]], "answer": [createDefaultGridCell()], "correct": 0}]});
     const [grid, setGrid] = useState(getGridFromIndexTrail(currentItemIndexTrail));
-
-    function initializeDrawingPanel() {
-        setHideOptions(!hideOptions);
-        setHideDrawingPanel(!hideDrawingPanel);
-
-        hideDrawingPanel
-            ? setButtonText("reset")
-            : setButtonText("start drawing")
-    }
 
     function getGridFromIndexTrail(indexTrail, startArray=null) {
         if(startArray == null) {
@@ -86,8 +75,61 @@ export default function Editor() {
         restrictedArr[indexTrail[index]] = value;       
     }
 
-    function createScene() {
-        return Array(6).fill().map(() => Array(6).fill(0));
+    function getGridType(gridGiven=null) {
+        if(gridGiven == null) {
+            gridGiven = grid;
+        }
+
+        let gridElement;
+        if(isAnswerGrid(gridGiven)) {
+            gridElement = grid[0];
+        } else {
+            gridElement = grid[0][0];
+        }
+
+        if(typeof gridElement === 'string') {
+            return "string";
+        } else if(gridElement.constructor === Array) {
+            return "pixels";
+        }
+    }
+
+    function setGridType(newType) {
+        if(inAnswer(currentItemIndexTrail)) {
+            setGrid(createGrid(grid.length, null, () => createGridCellByType(newType)));
+        } else {
+            setGrid(createGrid(grid.length, grid[0].length, () => createGridCellByType(newType)));
+        }
+    }
+
+    function createGrid(rowCount, colCount, generator) {
+        if(colCount == null) {
+            return Array(rowCount).fill().map(generator);
+        } else {
+            return Array(rowCount).fill().map(() => Array(colCount).fill().map(generator));
+        }
+        
+    }
+
+    function createGridCell(gridGiven=null) {
+        if(gridGiven == null) {
+            return createDefaultGridCell();
+        } else {
+            let type = getGridType(gridGiven);
+            return createGridCellByType(type);
+        }
+    }
+
+    function createGridCellByType(type) {
+        if(type === "pixels") {
+            return Array(6).fill().map(() => Array(6).fill(0));
+        } else if(type === "string") {
+            return "";
+        }
+    }
+
+    function createDefaultGridCell() {
+        return createGridCellByType(defaultGridType);
     }
 
     function generateIndexTrailSelectLists(indexTrail) {
@@ -147,9 +189,9 @@ export default function Editor() {
         let newLength = parseInt(newLengthString);
         let newArr;
         if(which === "context") {
-            newArr = changeArrayLength(problem[which], newLength, () => [[createScene()]]);
+            newArr = changeArrayLength(problem[which], newLength, () => [[createDefaultGridCell()]]);
         } else if(which === "questions") {
-            newArr = changeArrayLength(problem[which], newLength, () => ({"stimulus": [[createScene()]], "answer": [createScene()], "correct": 0}));
+            newArr = changeArrayLength(problem[which], newLength, () => ({"stimulus": [[createDefaultGridCell()]], "answer": [createDefaultGridCell()], "correct": 0}));
         }
         console.log(JSON.stringify(newArr));
         
@@ -186,14 +228,16 @@ export default function Editor() {
 
         let copyArr;
         if(inAnswer(currentItemIndexTrail)) {
-            copyArr = changeArrayLength(grid, newCount, createScene);
+            copyArr = changeArrayLength(grid, newCount, () => createGridCell(grid));
         } else {
             if(axis === "row") {
-                copyArr = addRowsToStateArray(grid, newCount, createScene);
+                copyArr = addRowsToStateArray(grid, newCount, () => createGridCell(grid));
             } else if(axis === "col") {
-                copyArr = addColsToStateArray(grid, newCount, createScene);
+                copyArr = addColsToStateArray(grid, newCount, () => createGridCell(grid));
             }
         }
+
+        console.log(copyArr);
 
         let newProblem = {...problem}
 
@@ -239,7 +283,7 @@ export default function Editor() {
         return copyArr;
     }
 
-    function getSceneFromCoords(grid, r, c) {
+    function getCellFromCoords(grid, r, c) {
 
         if(c == null) {
             return grid[r];
@@ -249,7 +293,7 @@ export default function Editor() {
         }
     }
 
-    function setSceneFromCoords(grid, scene, r, c) {
+    function setCellFromCoords(grid, scene, r, c) {
         if(c == null) {
             grid[r] = scene;
         }
@@ -260,37 +304,53 @@ export default function Editor() {
 
     function changeWidth(widthString, r, c) {
         let width = parseInt(widthString);
-        let copyArr = addColsToStateArray(getSceneFromCoords(grid, r, c), width, () => 0);
+        let copyArr = addColsToStateArray(getCellFromCoords(grid, r, c), width, () => 0);
         copyArr = copyArr.map(row => row.map(x => x ?? 0));
 
         let copyGrid = [...grid]; 
 
-        setSceneFromCoords(copyGrid, copyArr, r, c);
+        setCellFromCoords(copyGrid, copyArr, r, c);
 
         setGrid(copyGrid);
     }
 
     function changeHeight(heightString, r, c) {
         let height = parseInt(heightString);
-        let copyArr = addRowsToStateArray(getSceneFromCoords(grid, r, c), height, () => 0);
+        let copyArr = addRowsToStateArray(getCellFromCoords(grid, r, c), height, () => 0);
 
         let copyGrid = [...grid];
-        setSceneFromCoords(copyGrid, copyArr, r, c);
+        setCellFromCoords(copyGrid, copyArr, r, c);
         
+
+        setGrid(copyGrid);
+    }
+
+    function setString(newVal, gridRow, gridCol) {
+        let copyGrid = [...grid];
+        setCellFromCoords(copyGrid, newVal, gridRow, gridCol);
 
         setGrid(copyGrid);
     }
 
     function setPixelColor(new_val, sceneRow, sceneCol, gridRow, gridCol) {
 
-        let newArray = replaceItemsWithoutMutating(getSceneFromCoords(grid, gridRow, gridCol), sceneRow, sceneCol, new_val);
+        let newArray = replaceItemsWithoutMutating(getCellFromCoords(grid, gridRow, gridCol), sceneRow, sceneCol, new_val);
 
         let copyGrid = [...grid];
-        setSceneFromCoords(copyGrid, newArray, gridRow, gridCol);
+        setCellFromCoords(copyGrid, newArray, gridRow, gridCol);
 
         setGrid(copyGrid); 
     }
 
+    function isAnswerGrid(grid) {
+        let restrictedArr = grid;
+        let dimCounter = 0;
+        while(restrictedArr.constructor === Array) {
+            restrictedArr = restrictedArr[0]
+            dimCounter += 1;
+        }
+        return (dimCounter % 2 === 1);
+    }
     function inAnswer(indexTrail) {
         return indexTrail.includes("answer");
     }
@@ -365,6 +425,9 @@ export default function Editor() {
         document.body.removeChild(link);
     }
 
+    console.log(JSON.stringify(grid));
+    console.log(getGridType(grid));
+
     return (
         <div id="editor">
             <h1>ARC Editor</h1>
@@ -378,6 +441,10 @@ export default function Editor() {
                 <label>
                     ID:
                     <input type="text" value={problemId} onChange={(e) => setProblemId(e.target.value)} /> 
+                </label>
+                <label>
+                    Default grid cell type:
+                    <SelectList id="gridCellType" options={["pixels", "string"]} selection={defaultGridType} onChange={(e) => setDefaultGridType(e.target.value)}/>
                 </label>
             </div>
             <h2>Context and Questions</h2>
@@ -395,27 +462,29 @@ export default function Editor() {
                     Multiple Choice
                 </label>
             </div>
-            <h2>Current Grid Dimensions</h2>
+            <h2>Current Grid Properties</h2>
             <div id="options">
+                <SelectList id="gridCellType" options={["pixels", "string"]} selection={getGridType(grid)} onChange={(e) => setGridType(e.target.value)}/>
                 <NumberInput name="# Rows" value={getGridFromIndexTrail(currentItemIndexTrail).length} onChange={(e) => changeRowOrColCount(e, "row")} />
                 {!currentItemIndexTrail.includes("answer") &&
                 <NumberInput name="# Cols" value={getGridFromIndexTrail(currentItemIndexTrail)[0].length} onChange={(e) => changeRowOrColCount(e, "col")} />}
             </div>
-            <button onClick={initializeDrawingPanel} className="button">{buttonText}</button>
             <div>
                 <div className="option">
                    {generateIndexTrailSelectLists(currentItemIndexTrail)}
                 </div>
-                <DrawingPanel 
+                <InputGrid 
                     grid={grid} 
-                    changeWidth={changeWidth} 
-                    changeHeight={changeHeight} 
-                    getSceneFromCoords={getSceneFromCoords}
+                    type={getGridType(grid[0][0])}
+                    getCellFromCoords={getCellFromCoords}
                     inAnswer={inAnswer(currentItemIndexTrail)} 
                     correctAnswer={getCorrectAnswer()} 
                     setCorrectAnswer={setCorrectAnswer} 
                     multipleChoice={multipleChoice} 
+                    changeWidth={changeWidth} 
+                    changeHeight={changeHeight}
                     setPixelColor={setPixelColor} 
+                    setString={setString}
                  />
             </div>
             <button onClick={exportJSON} className="button">Export JSON</button>

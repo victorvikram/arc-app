@@ -13,13 +13,9 @@ let circleSpacing = 14
 
 
 
-export default function DrawingPanel(props) {
-    const {grid, getSceneFromCoords, changeWidth, changeHeight, inAnswer, correctAnswer, setCorrectAnswer, multipleChoice, setPixelColor } = props;
+export default function InputGrid(props) {
+    const {grid, type, getCellFromCoords, inAnswer, correctAnswer, setCorrectAnswer, multipleChoice, setPixelColor, changeWidth, changeHeight, setString} = props;
     const [penColor, setPenColor] = useState(colors[0]);
-
-    function changePenColor(color) {
-        setPenColor(color.hex);
-    }
 
     function generateGrid() {
 
@@ -40,17 +36,19 @@ export default function DrawingPanel(props) {
                 
                 if(useGrid[i][j] != null) {
                     columns.push(
-                        <PixelGrid
+                        <GridCell
                             key={j}
-                            changeWidth={(e) => changeWidth(e.target.value, rowIndex, colIndex)}
-                            changeHeight={(e) => changeHeight(e.target.value, rowIndex, colIndex)}
-                            penColor={penColor}
-                            setPixelColor={(newVal, row, col) => setPixelColor(newVal, row, col, rowIndex, colIndex)}
-                            pixels={getSceneFromCoords(grid, rowIndex, colIndex)}
+                            type={type}
+                            content={getCellFromCoords(grid, rowIndex, colIndex)}
                             inAnswer={inAnswer}
                             multipleChoice={multipleChoice}
                             correct={inAnswer && (correctAnswer === rowIndex)}
                             setCorrectAnswer={() => setCorrectAnswer(rowIndex)}
+                            changeWidth={(e) => changeWidth(e.target.value, rowIndex, colIndex)}
+                            changeHeight={(e) => changeHeight(e.target.value, rowIndex, colIndex)}
+                            penColor={penColor}
+                            setPixelColor={(newVal, row, col) => setPixelColor(newVal, row, col, rowIndex, colIndex)}
+                            setString={(newVal) => setString(newVal, rowIndex, colIndex)}
                         />);
                 }
 
@@ -77,20 +75,68 @@ export default function DrawingPanel(props) {
 
     return (
         <div id="drawingPanel">
-            <CirclePicker 
-                color={penColor} 
-                colors={colors} 
-                onChangeComplete={changePenColor} 
-                width={colors.length * (circleSize + circleSpacing)} 
-                circleSize={circleSize} 
-                circleSpacing={circleSpacing}/>
+            {type === "pixels" &&
+                <CirclePicker 
+                    color={penColor} 
+                    colors={colors} 
+                    onChangeComplete={(color) => setPenColor(color.hex)} 
+                    width={colors.length * (circleSize + circleSpacing)} 
+                    circleSize={circleSize} 
+                    circleSpacing={circleSpacing}
+                />
+            }
+            
             {generateGrid()}
         </div>     
     );
 }
 
-export function PixelGrid(props) {
-    const { changeWidth, changeHeight, penColor, setPixelColor, pixels, inAnswer, multipleChoice, correct, setCorrectAnswer} = props;
+export function GridCell(props) {
+    const { type, content, inAnswer, multipleChoice, correct, setCorrectAnswer, changeWidth, changeHeight, penColor, setPixelColor, setString} = props;
+
+    return (
+        <div>
+            {type === "pixels" &&
+                <PixelEditor 
+                    pixels={content}
+                    changeHeight={changeHeight}
+                    changeWidth={changeWidth}
+                    penColor={penColor}
+                    setPixelColor={setPixelColor}
+                />
+            }
+            {type === "string" &&
+                    <TextEditor 
+                        string={content}
+                        setString={setString}
+                    />
+            }
+            {inAnswer && multipleChoice &&
+                <div>
+                    <label>
+                        <input
+                        type="checkbox"
+                        checked={correct}
+                        onChange={setCorrectAnswer}
+                        />
+                        Correct
+                    </label>
+                </div>}
+        </div>
+    )
+}
+
+export function TextEditor(props) {
+    const { string, setString } = props;
+    return (
+        <div className="flex-child">
+            <input type="text" value={string} onChange={(e) => setString(e.target.value)} /> 
+        </div>
+    )
+}
+
+export function PixelEditor(props) {
+    const { pixels, changeHeight, changeWidth, penColor, setPixelColor} = props;
 
     const [dragging, setDragging] = useState(false);
 
@@ -119,17 +165,6 @@ export function PixelGrid(props) {
                 onMouseUp={() => setDragging(false)}>
                 {rows}
             </div>
-            {inAnswer && multipleChoice &&
-            <div>
-                <label>
-                    <input
-                    type="checkbox"
-                    checked={correct}
-                    onChange={setCorrectAnswer}
-                    />
-                    Correct
-                </label>
-            </div>}
         </div>
     );
 }
