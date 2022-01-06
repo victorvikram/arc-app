@@ -1,24 +1,20 @@
 import React, { useState } from 'react';
 import "../styles/drawingPanel.scss";
-import {CirclePicker} from "react-color";
 import { exportComponentAsPNG } from "react-component-export-image";
 
 import Row from "./Row";
 import { colors } from './Editor';
-import { NumberInput } from './Editor';
+import { NumberInput, SelectList } from './Editor';
 
 
-let circleSize = 28
-let circleSpacing = 14
+
 
 
 
 export default function InputGrid(props) {
-    const {grid, type, getCellFromCoords, inAnswer, correctAnswer, setCorrectAnswer, multipleChoice, setPixelColor, changeWidth, changeHeight, setString} = props;
-    const [penColor, setPenColor] = useState(colors[0]);
+    const {grid, stage, type, lockedVariables, handleGridTypeChange, handleChangeRowCount, handleChangeColCount, getCellFromCoords, inAnswer, correctAnswer, setCorrectAnswer, multipleChoice, penColor, setPixelColor, changeWidth, changeHeight, setString} = props;
 
     function generateGrid() {
-
         let useGrid;
         if(inAnswer) {
             useGrid = makeInto2dArray(grid);
@@ -73,19 +69,24 @@ export default function InputGrid(props) {
         return newArray;
     }
 
+    console.log(stage);
+    console.log(lockedVariables);
     return (
-        <div id="drawingPanel">
-            {type === "pixels" &&
-                <CirclePicker 
-                    color={penColor} 
-                    colors={colors} 
-                    onChangeComplete={(color) => setPenColor(color.hex)} 
-                    width={colors.length * (circleSize + circleSpacing)} 
-                    circleSize={circleSize} 
-                    circleSpacing={circleSpacing}
-                />
-            }
-            
+        <div>
+            <div id="options">
+                {
+                    !((stage + "-gridType") in lockedVariables) &&
+                    <SelectList id={stage + "-gridType"} options={["pixels", "string"]} selection={type} onChange={handleGridTypeChange}/>
+                }
+                {  
+                    !((stage + "-row") in lockedVariables) &&
+                    <NumberInput id={stage + "-row"} name="# Rows" value={grid.length} onChange={handleChangeRowCount} />
+                }
+                {
+                    !inAnswer && !((stage + "-col") in lockedVariables) &&
+                    <NumberInput id={stage + "-col"} name="# Cols" value={grid[0].length} onChange={handleChangeColCount} />
+                }
+            </div>
             {generateGrid()}
         </div>     
     );

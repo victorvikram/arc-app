@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import "../styles/editor.scss";
 import InputGrid from "./DrawingPanel";
+import {CirclePicker} from "react-color";
 
 export const colors = ["#000000", "#0068cf", "#ff3937", "#00c443", "#ffd631", "#a0a0a0", "#f916b1", "#ff7a2c", "#63d6fc", "#820f23"]
+
+let circleSize = 28
+let circleSpacing = 14
 
 function twoDArrayCopy(arr) {
     const rows = arr.length;
@@ -40,14 +44,61 @@ export function NumberInput(props) {
 
 export default function Editor() {
 
-    const [problemId, setProblemId] = useState("arc-0");
-    const [problemCat, setProblemCat] = useState("arc");
+    const [problemId, setProblemId] = useState("other-0");
+    const [problemCat, setProblemCat] = useState("other");
     const [defaultGridType, setDefaultGridType] = useState("pixels");
     const [multipleChoice, setMultipleChoice] = useState(false);
     const [currentItemIndexTrail, setCurrentItemIndexTrail] = useState(["context", 0, null]);
     const [problem, setProblem] = useState({"context": [[[createDefaultGridCell()]]], "questions": [{"stimulus": [[createDefaultGridCell()]], "answer": [createDefaultGridCell()], "correct": 0}]});
-    const [grid, setGrid] = useState(getGridFromIndexTrail(currentItemIndexTrail));
+    const [penColor, setPenColor] = useState(colors[0]);
+    
+    const lockedVariables = {
+                                "arc": {
+                                        "contextLength": 1,
+                                        "multipleChoice": false,
+                                        "defaultGridType": "pixels",
+                                        "context-col": 2, 
+                                        "stimulus-col": 1, 
+                                        "stimulus-row": 1,
+                                        "answer-row": 1, 
+                                        "context-gridType": "pixels",
+                                        "stimulus-gridType": "pixels",
+                                        "answer-gridType": "pixels"
+                                    },
+                                "bongard": {},
+                                "other": {}
+                            }
 
+    function setLockedVariables(cat) {
+        for(let key in lockedVariables[cat]) {
+            let keySplit = key.split("-")
+            if(key === "contextLength") {
+                changeContextOrQuestionLength(lockedVariables[cat][key], "context");
+            } else if(key === "multipleChoice") {
+                setMultipleChoice(lockedVariables[cat]["multipleChoice"]);
+            } else if(key === "defaultGridType") {
+                setDefaultGridType(lockedVariables[cat]["defaultGridType"]);
+            } else if(keySplit[0] === "context" && ["row", "col"].includes(keySplit[1])) {
+                for(let gridIndex in problem["context"]) {
+                    changeRowOrColCount(["context", gridIndex], lockedVariables[cat]["context-" + keySplit[1]], keySplit[1]);
+                }
+            } else if(["stimulus", "answer"].includes(keySplit[0]) && ["row", "col"].includes(keySplit[0])) {
+                for(let gridIndex in problem["questions"]) {
+                    changeRowOrColCount(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-" + keySplit[1]], keySplit[1]);
+                }
+            } else if(keySplit[0] === "context" && keySplit[1] === "gridType") {
+                for(let gridIndex in problem["context"]) {
+                    console.log("changing context grid type");
+                    setGridType(["context", gridIndex], lockedVariables[cat]["context-gridType"]);
+                }
+            } else if(["stimulus", "answer"].includes(keySplit[0]) && keySplit[1] === "gridType") {
+                for(let gridIndex in problem["context"]) {
+                    setGridType(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-gridType"]);
+                }
+            }
+        }
+    }
+    
     function getGridFromIndexTrail(indexTrail, startArray=null) {
         if(startArray == null) {
             startArray = problem;
@@ -77,14 +128,14 @@ export default function Editor() {
 
     function getGridType(gridGiven=null) {
         if(gridGiven == null) {
-            gridGiven = grid;
+            gridGiven = getGridFromIndexTrail(currentItemIndexTrail);
         }
 
         let gridElement;
         if(isAnswerGrid(gridGiven)) {
-            gridElement = grid[0];
+            gridElement = gridGiven[0];
         } else {
-            gridElement = grid[0][0];
+            gridElement = gridGiven[0][0];
         }
 
         if(typeof gridElement === 'string') {
@@ -94,11 +145,24 @@ export default function Editor() {
         }
     }
 
-    function setGridType(newType) {
-        if(inAnswer(currentItemIndexTrail)) {
-            setGrid(createGrid(grid.length, null, () => createGridCellByType(newType)));
+    function setGridType(indexTrail, newType) {
+        console.log("new grid type", newType);
+        let grid = getGridFromIndexTrail(indexTrail);
+        let newGrid;
+
+        if(inAnswer(indexTrail)) {
+            newGrid = createGrid(grid.length, null, () => createGridCellByType(newType));
+            modifyProblemWithNewGrid(indexTrail, newGrid);
         } else {
-            setGrid(createGrid(grid.length, grid[0].length, () => createGridCellByType(newType)));
+            newGrid = createGrid(grid.length, grid[0].length, () => createGridCellByType(newType));
+            modifyProblemWithNewGrid(indexTrail, newGrid);   
+        }
+    }
+
+    function handleGridTypeChange(indexTrail, event) {
+        let newType = event.target.value;
+        if(!isSpecialProblemType(problemCat)) {
+            setGridType(indexTrail, newType);
         }
     }
 
@@ -174,31 +238,28 @@ export default function Editor() {
 
         newIndexTrail = populateIndexTrail(newIndexTrail);
 
-        saveGrid();
         setCurrentItemIndexTrail(newIndexTrail);
-        setGrid(getGridFromIndexTrail(newIndexTrail));
     }
 
-    function saveGrid() {
-        let newProblem = {...problem};
-        setGridFromIndexTrail(newProblem, currentItemIndexTrail, grid);
+    function modifyProblemWithNewGrid(indexTrail, newGrid) {
+
+        let newProblem =  {...problem};
+        setGridFromIndexTrail(newProblem, indexTrail, newGrid);
         setProblem(newProblem);
+
+        return newProblem;
     }
 
-    function changeContextOrQuestionLength(newLengthString, which) {
-        let newLength = parseInt(newLengthString);
+    function changeContextOrQuestionLength(newLength, which) {
         let newArr;
+
         if(which === "context") {
             newArr = changeArrayLength(problem[which], newLength, () => [[createDefaultGridCell()]]);
         } else if(which === "questions") {
             newArr = changeArrayLength(problem[which], newLength, () => ({"stimulus": [[createDefaultGridCell()]], "answer": [createDefaultGridCell()], "correct": 0}));
         }
-        console.log(JSON.stringify(newArr));
-        
 
-        let newProblem = {...problem};
-        newProblem[which] = newArr;
-        setProblem(newProblem);
+        modifyProblemWithNewGrid([which], newArr);
     }
 
     function changeArrayLength(arr, newLength, generator) {
@@ -216,18 +277,85 @@ export default function Editor() {
         return copyArr;
         
     }
-    
-    function changeRowOrColCount(e, axis) {
-        let newCount = parseInt(e.target.value);
 
-        if(newCount < 1) {
-            newCount = 1;
-        } else if(newCount > 1 && inAnswer(currentItemIndexTrail) && !multipleChoice) {
+    function isSpecialProblemType(cat) {
+        return (cat === "arc");
+    }
+
+    function handleMultChoiceCheckbox() {
+        if("multipleChoice" in lockedVariables[problemCat]) {
+            setMultipleChoice(lockedVariables[problemCat]["multipleChoice"]);
+        } else {
+            setMultipleChoice(!multipleChoice);
+        }
+    }
+
+    function handleCatChange(event) {
+        let newCat = event.target.value;
+
+        setLockedVariables(newCat);
+
+        setProblemCat(newCat);
+    }
+
+    function handleDefaultGridTypeChange(event) {
+        let newGridType = event.target.value;
+
+        if(!isSpecialProblemType(problemCat)) {
+            setDefaultGridType(newGridType);
+        }
+    }
+
+    function handleContextNumberChange(event) {
+        let newNumber = parseInt(event.target.value);
+
+        if(!isSpecialProblemType(problemCat)) {
+            changeContextOrQuestionLength(newNumber, "context");
+        }
+    }
+
+    function handleQuestionNumberChange(event) {
+        let newNumber = parseInt(event.target.value);
+        changeContextOrQuestionLength(newNumber, "questions");
+
+    }
+
+    function applyBounds(number) {
+        if(number < 1) {
+            number = 1;
+        } else if(number > 30) {
+            number = 30;
+        }
+
+        return number;
+    }
+
+    function handleChangeRowCount(indexTrail, event) {
+        let newCount = applyBounds(parseInt(event.target.value));
+        let stage = getStage(indexTrail);
+        if(!(stage + "-row" in lockedVariables[problemCat])) {
+            changeRowOrColCount(indexTrail, newCount, "row");
+        }
+    }
+
+    function handleChangeColCount(indexTrail, event) {
+        let newCount = applyBounds(parseInt(event.target.value));
+        let stage = getStage(indexTrail);
+        if(!(stage + "-col" in lockedVariables[problemCat])) {
+            changeRowOrColCount(indexTrail, newCount, "col");
+        }
+        
+    }
+    
+    function changeRowOrColCount(indexTrail, newCount, axis) {
+        let grid = getGridFromIndexTrail(indexTrail);
+
+        if(newCount > 1 && inAnswer(indexTrail) && !multipleChoice) {
             setMultipleChoice(true);
         }
 
         let copyArr;
-        if(inAnswer(currentItemIndexTrail)) {
+        if(inAnswer(indexTrail)) {
             copyArr = changeArrayLength(grid, newCount, () => createGridCell(grid));
         } else {
             if(axis === "row") {
@@ -237,13 +365,7 @@ export default function Editor() {
             }
         }
 
-        console.log(copyArr);
-
-        let newProblem = {...problem}
-
-        setGridFromIndexTrail(newProblem, currentItemIndexTrail, copyArr);
-        setProblem(newProblem);
-        setGrid(getGridFromIndexTrail(currentItemIndexTrail, newProblem));
+        modifyProblemWithNewGrid(indexTrail, copyArr);
     }
 
     function addRowsToStateArray(arr, newRowCount, generator) {
@@ -302,7 +424,8 @@ export default function Editor() {
         }
     }
 
-    function changeWidth(widthString, r, c) {
+    function changeWidth(indexTrail, widthString, r, c) {
+        let grid = getGridFromIndexTrail(currentItemIndexTrail);
         let width = parseInt(widthString);
         let copyArr = addColsToStateArray(getCellFromCoords(grid, r, c), width, () => 0);
         copyArr = copyArr.map(row => row.map(x => x ?? 0));
@@ -311,35 +434,35 @@ export default function Editor() {
 
         setCellFromCoords(copyGrid, copyArr, r, c);
 
-        setGrid(copyGrid);
+        modifyProblemWithNewGrid(currentItemIndexTrail, copyGrid);
     }
 
-    function changeHeight(heightString, r, c) {
+    function changeHeight(indexTrail, heightString, r, c) {
+        let grid = getGridFromIndexTrail(currentItemIndexTrail);
         let height = parseInt(heightString);
         let copyArr = addRowsToStateArray(getCellFromCoords(grid, r, c), height, () => 0);
 
         let copyGrid = [...grid];
         setCellFromCoords(copyGrid, copyArr, r, c);
         
-
-        setGrid(copyGrid);
+        modifyProblemWithNewGrid(currentItemIndexTrail, copyGrid);
     }
 
-    function setString(newVal, gridRow, gridCol) {
+    function setString(indexTrail, newVal, gridRow, gridCol) {
+        let grid = getGridFromIndexTrail(indexTrail);
         let copyGrid = [...grid];
         setCellFromCoords(copyGrid, newVal, gridRow, gridCol);
 
-        setGrid(copyGrid);
+        modifyProblemWithNewGrid(indexTrail, copyGrid);
     }
 
-    function setPixelColor(new_val, sceneRow, sceneCol, gridRow, gridCol) {
-
+    function setPixelColor(indexTrail, new_val, sceneRow, sceneCol, gridRow, gridCol) {
+        let grid = getGridFromIndexTrail(indexTrail);
         let newArray = replaceItemsWithoutMutating(getCellFromCoords(grid, gridRow, gridCol), sceneRow, sceneCol, new_val);
-
         let copyGrid = [...grid];
         setCellFromCoords(copyGrid, newArray, gridRow, gridCol);
 
-        setGrid(copyGrid); 
+        modifyProblemWithNewGrid(indexTrail, copyGrid);
     }
 
     function isAnswerGrid(grid) {
@@ -380,8 +503,6 @@ export default function Editor() {
         let rows;
         let cols;
         let items;
-
-        saveGrid();
 
         file["category"] = problemCat;
         file["id"] = problemId;
@@ -425,9 +546,104 @@ export default function Editor() {
         document.body.removeChild(link);
     }
 
-    console.log(JSON.stringify(grid));
-    console.log(getGridType(grid));
+    function getStage(indexTrail) {
+        if(indexTrail.includes("context")) {
+            return "context";
+        } else if(indexTrail.includes("stimulus")) {
+            return "stimulus";
+        } else if(indexTrail.includes("answer")) {
+            return "answer";
+        }
+    }
 
+    function makeInputGrids() {
+        
+        if(isSpecialProblemType(problemCat)) {
+            let inputGridsLeft = [];
+            let inputGridsRight = [];
+            let indexTrails = [["context", 0]]
+            
+            for(let gridIndex in problem["questions"]) {
+                indexTrails.push(["questions", gridIndex, "stimulus"]);
+                indexTrails.push(["questions", gridIndex, "answer"]);
+            }
+
+            for(let i = 0; i < indexTrails.length; i++) {
+                let indexTrail = indexTrails[i];
+                let activeInputGrid = indexTrail[0] === "context" ? inputGridsLeft : inputGridsRight;
+                let grid = getGridFromIndexTrail(indexTrail);
+                activeInputGrid.push(
+                    <InputGrid 
+                        grid={grid}
+                        stage={getStage(indexTrail)}
+                        type={getGridType(grid)}
+                        lockedVariables={lockedVariables[problemCat]}
+                        handleGridTypeChange={(evt) => handleGridTypeChange(indexTrail, evt)}
+                        handleChangeRowCount={(e) => handleChangeRowCount(indexTrail, e)}
+                        handleChangeColCount={(e) => handleChangeColCount(indexTrail, e)}
+                        getCellFromCoords={getCellFromCoords}
+                        inAnswer={inAnswer(indexTrail)} 
+                        correctAnswer={getCorrectAnswer()} 
+                        setCorrectAnswer={setCorrectAnswer} 
+                        multipleChoice={multipleChoice} 
+                        changeWidth={(ws, r, c) => changeWidth(indexTrail, ws, r, c)} 
+                        changeHeight={(hs, r, c) => changeHeight(indexTrail, hs, r, c)}
+                        penColor={penColor}
+                        setPixelColor={(color, sr, sc, gr, gc) => setPixelColor(indexTrail, color, sr, sc, gr, gc)} 
+                        setString={(str, gr, gc) => setString(indexTrail, str, gr, gc)}
+                    />
+                );
+            }
+
+            let modifiedInputGridsRight = [];
+
+            for(let i = 0; i < inputGridsRight.length; i = i + 2) {
+                modifiedInputGridsRight.push(
+                    <div className="flex-container">
+                        {[inputGridsRight[i], inputGridsRight[i + 1]]}
+                    </div>
+                )
+            } 
+
+            return (
+                <div className="flex-container">
+                    <div>
+                        {inputGridsLeft}
+                    </div>
+                    <div>
+                        {modifiedInputGridsRight}
+                    </div>
+                </div>
+            );  
+        } else {
+            let inputGrids = [];
+            let grid = getGridFromIndexTrail(currentItemIndexTrail);
+            inputGrids.push(<InputGrid 
+                grid={grid}
+                stage={getStage(currentItemIndexTrail)}
+                type={getGridType(grid)}
+                lockedVariables={lockedVariables[problemCat]}
+                handleGridTypeChange={(val) => handleGridTypeChange(currentItemIndexTrail, val)}
+                handleChangeRowCount={(e) => handleChangeRowCount(currentItemIndexTrail, e)}
+                handleChangeColCount={(e) => handleChangeColCount(currentItemIndexTrail, e)}
+                getCellFromCoords={getCellFromCoords}
+                inAnswer={inAnswer(currentItemIndexTrail)} 
+                correctAnswer={getCorrectAnswer()} 
+                setCorrectAnswer={setCorrectAnswer} 
+                multipleChoice={multipleChoice} 
+                changeWidth={(ws, r, c) => changeWidth(currentItemIndexTrail, ws, r, c)} 
+                changeHeight={(hs, r, c) => changeHeight(currentItemIndexTrail, hs, r, c)}
+                penColor={penColor}
+                setPixelColor={(color, sr, sc, gr, gc) => setPixelColor(currentItemIndexTrail, color, sr, sc, gr, gc)} 
+                setString={(str, gr, gc) => setString(currentItemIndexTrail, str, gr, gc)}
+            />);
+
+            return <div className="flex-container">{inputGrids}</div>;
+        }
+        
+    }
+
+    console.log(problem)
     return (
         <div id="editor">
             <h1>ARC Editor</h1>
@@ -435,59 +651,62 @@ export default function Editor() {
             <div id="options">
                 <label>
                     Category:
-                    <SelectList id="category" options={["bongard", "arc"]} selection={problemCat} onChange={(e) => setProblemCat(e.target.value)}/>
+                    <SelectList id="category" options={["bongard", "arc", "other"]} selection={problemCat} onChange={handleCatChange}/>
                     
                 </label>
                 <label>
                     ID:
                     <input type="text" value={problemId} onChange={(e) => setProblemId(e.target.value)} /> 
                 </label>
-                <label>
-                    Default grid cell type:
-                    <SelectList id="gridCellType" options={["pixels", "string"]} selection={defaultGridType} onChange={(e) => setDefaultGridType(e.target.value)}/>
-                </label>
+                {
+                    !("defaultGridType" in lockedVariables[problemCat]) &&
+                    <label>
+                        Default grid cell type:
+                        <SelectList id="gridCellType" options={["pixels", "string"]} selection={defaultGridType} onChange={handleDefaultGridTypeChange}/>
+                    </label>   
+                }
             </div>
             <h2>Context and Questions</h2>
             <div id="options">
-                <NumberInput name="# Context" value={problem["context"].length} onChange={(e) => changeContextOrQuestionLength(e.target.value, "context")} />
-                <NumberInput name="# Questions" value={problem["questions"].length} onChange={(e) => changeContextOrQuestionLength(e.target.value, "questions")} />
+                {
+                    !("contextLength" in lockedVariables[problemCat]) &&
+                    <NumberInput name="# Context" value={problem["context"].length} onChange={handleContextNumberChange} />
+                }
+                <NumberInput name="# Questions" value={problem["questions"].length} onChange={handleQuestionNumberChange} />
             </div>
             <div>
-                <label>
-                    <input
-                    type="checkbox"
-                    checked={multipleChoice}
-                    onChange={() => setMultipleChoice(!multipleChoice)}
+                {
+                    !("multipleChoice" in lockedVariables[problemCat]) &&
+                    <label>
+                        <input
+                        id="multipleChoice"
+                        type="checkbox"
+                        checked={multipleChoice}
+                        onChange={handleMultChoiceCheckbox}
+                        />
+                        Multiple Choice
+                    </label>
+                }
+            </div>
+            <div>
+                {!isSpecialProblemType(problemCat) &&
+                    <div className="option">
+                        {generateIndexTrailSelectLists(currentItemIndexTrail)}
+                    </div>
+                }
+                {(getGridType((getGridFromIndexTrail(currentItemIndexTrail))) === "pixels" || isSpecialProblemType(problemCat)) &&
+                    <CirclePicker 
+                        color={penColor} 
+                        colors={colors} 
+                        onChangeComplete={(color) => setPenColor(color.hex)} 
+                        width={colors.length * (circleSize + circleSpacing)} 
+                        circleSize={circleSize} 
+                        circleSpacing={circleSpacing}
                     />
-                    Multiple Choice
-                </label>
+                }
+                {makeInputGrids()}
+                <button onClick={exportJSON} className="button">Export JSON</button>
             </div>
-            <h2>Current Grid Properties</h2>
-            <div id="options">
-                <SelectList id="gridCellType" options={["pixels", "string"]} selection={getGridType(grid)} onChange={(e) => setGridType(e.target.value)}/>
-                <NumberInput name="# Rows" value={getGridFromIndexTrail(currentItemIndexTrail).length} onChange={(e) => changeRowOrColCount(e, "row")} />
-                {!currentItemIndexTrail.includes("answer") &&
-                <NumberInput name="# Cols" value={getGridFromIndexTrail(currentItemIndexTrail)[0].length} onChange={(e) => changeRowOrColCount(e, "col")} />}
-            </div>
-            <div>
-                <div className="option">
-                   {generateIndexTrailSelectLists(currentItemIndexTrail)}
-                </div>
-                <InputGrid 
-                    grid={grid} 
-                    type={getGridType(grid[0][0])}
-                    getCellFromCoords={getCellFromCoords}
-                    inAnswer={inAnswer(currentItemIndexTrail)} 
-                    correctAnswer={getCorrectAnswer()} 
-                    setCorrectAnswer={setCorrectAnswer} 
-                    multipleChoice={multipleChoice} 
-                    changeWidth={changeWidth} 
-                    changeHeight={changeHeight}
-                    setPixelColor={setPixelColor} 
-                    setString={setString}
-                 />
-            </div>
-            <button onClick={exportJSON} className="button">Export JSON</button>
         </div>
     );
 }
