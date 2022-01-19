@@ -56,7 +56,7 @@
   display: flex;
   align-items: flex;
   justify-content: center;
-  padding: 0;
+  //padding: 1em;
 }
 
 .flex-child {
@@ -91,4 +91,8 @@
     border-color: $red;
     box-shadow: 0 0 0.5rem $grey;
   }
+}
+
+.addPadding {
+  padding: 1em;
 }

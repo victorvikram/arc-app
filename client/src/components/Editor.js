@@ -661,7 +661,7 @@ export default function Editor() {
                     </label>   
                 }
             </div>
-            <div id="options">
+            <div id="options" className="addPadding">
                 {
                     !("contextLength" in lockedVariables[problemCat]) &&
                     <NumberInput name="# Context" value={problem["context"].length} onChange={handleContextLengthChange} />
@@ -858,23 +858,31 @@ export function GridMenus(props) {
 
     return (
         <div>
+            <div>
+
+            </div>
             {
                 problemCat !== "arc" &&
                 <div className="flex-container">
                     {generateIndexTrailSelectLists(indexTrail)}
                 </div>
             }
+            
             {
                 (gridType === "pixels" || problemCat === "arc") &&
-                <CirclePicker 
-                    color={penColor} 
-                    colors={colors} 
-                    onChangeComplete={(color) => setPenColor(color.hex)} 
-                    width={colors.length * (circleSize + circleSpacing)} 
-                    circleSize={circleSize} 
-                    circleSpacing={circleSpacing}
-                />
+                <div className="addPadding">
+                    <CirclePicker 
+                        color={penColor} 
+                        colors={colors} 
+                        onChangeComplete={(color) => setPenColor(color.hex)} 
+                        width={colors.length * (circleSize + circleSpacing)} 
+                        circleSize={circleSize} 
+                        circleSpacing={circleSpacing}
+                    />
+                </div>
             }
+            
+            
         </div>
     );
 }
