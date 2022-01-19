@@ -20,31 +20,12 @@
 
   #options {
     display: flex;
-    margin-bottom: 3rem;
+    // margin-bottom: 3rem;
     justify-content: center;
 
     .option {
       display: flex;
       flex-direction: column;
-    }
-
-    .panelInput {
-      height: 5rem;
-      width: 5rem;
-      font-size: 2rem;
-      text-align: center;
-      background-color: $black;
-      color: $white;
-      border: 1px solid $grey;
-      border-radius: 0.25rem;
-      margin: 0 1rem 0.5rem 1rem;
-      padding-left: 1rem;
-
-      &:focus {
-        outline: none !important;
-        border-color: $red;
-        box-shadow: 0 0 0.5rem $grey;
-      }
     }
   }
 
@@ -73,9 +54,41 @@
 
 .flex-container {
   display: flex;
+  align-items: flex;
+  justify-content: center;
+  padding: 0;
 }
 
 .flex-child {
   flex: 1;
   border: 1px solid rgb(10, 4, 65);
-}  
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.inputLabel {
+  font-size: 0.75rem
+}
+
+.panelInput {
+  height: 2.5rem;
+  width: 2.5rem;
+  font-size: 1.25rem;
+  text-align: center;
+  background-color: $black;
+  color: $white;
+  border: 1px solid $grey;
+  border-radius: 0.25rem;
+  margin: 0 1rem 0.5rem 1rem;
+  padding-left: 1rem;
+
+  &:focus {
+    outline: none !important;
+    border-color: $red;
+    box-shadow: 0 0 0.5rem $grey;
+  }
+}

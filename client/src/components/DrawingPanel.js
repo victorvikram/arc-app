@@ -4,7 +4,7 @@ import { exportComponentAsPNG } from "react-component-export-image";
 
 import Row from "./Row";
 import { colors } from './Editor';
-import { NumberInput, SelectList } from './Editor';
+import { NumberInput, SelectList, calcValFromIndexTrail } from './Editor';
 
 
 
@@ -12,11 +12,10 @@ import { NumberInput, SelectList } from './Editor';
 
 
 export default function InputGrid(props) {
-    const {grid, stage, type, lockedVariables, handleGridTypeChange, handleChangeRowCount, handleChangeColCount, getCellFromCoords, inAnswer, correctAnswer, setCorrectAnswer, multipleChoice, penColor, setPixelColor, changeWidth, changeHeight, setString} = props;
-
+    const {problemCat, grid, stage, type, lockedVariables, handleGridTypeChange, handleGridRowChange, handleGridColChange, handleAnswerLengthChange, correctAnswer, setCorrectAnswer, multipleChoice, penColor, setPixelColor, handleSceneRowChange, handleSceneColChange, setString} = props;
     function generateGrid() {
         let useGrid;
-        if(inAnswer) {
+        if(stage === "answer") {
             useGrid = makeInto2dArray(grid);
         } else {
             useGrid = grid;
@@ -27,21 +26,23 @@ export default function InputGrid(props) {
 
             let columns = [];
             for(let j = 0; j < useGrid[0].length; j++) {
-                let rowIndex = inAnswer ? i * 3 + j : i;
-                let colIndex = inAnswer ? null : j;
+                let rowIndex = stage === "answer" ? i * 3 + j : i;
+                let colIndex = stage === "answer" ? null : j;
+
+                console.log(correctAnswer, rowIndex);
                 
                 if(useGrid[i][j] != null) {
                     columns.push(
                         <GridCell
                             key={j}
                             type={type}
-                            content={getCellFromCoords(grid, rowIndex, colIndex)}
-                            inAnswer={inAnswer}
+                            content={calcValFromIndexTrail([rowIndex, colIndex], grid)}
+                            inAnswer={stage === "answer"}
                             multipleChoice={multipleChoice}
-                            correct={inAnswer && (correctAnswer === rowIndex)}
+                            correct={stage === "answer" && (correctAnswer === rowIndex)}
                             setCorrectAnswer={() => setCorrectAnswer(rowIndex)}
-                            changeWidth={(e) => changeWidth(e.target.value, rowIndex, colIndex)}
-                            changeHeight={(e) => changeHeight(e.target.value, rowIndex, colIndex)}
+                            changeWidth={(e) => handleSceneColChange(e, rowIndex, colIndex)}
+                            changeHeight={(e) => handleSceneRowChange(e, rowIndex, colIndex)}
                             penColor={penColor}
                             setPixelColor={(newVal, row, col) => setPixelColor(newVal, row, col, rowIndex, colIndex)}
                             setString={(newVal) => setString(newVal, rowIndex, colIndex)}
@@ -79,12 +80,20 @@ export default function InputGrid(props) {
                     <SelectList id={stage + "-gridType"} options={["pixels", "string"]} selection={type} onChange={handleGridTypeChange}/>
                 }
                 {  
-                    !((stage + "-row") in lockedVariables) &&
-                    <NumberInput id={stage + "-row"} name="# Rows" value={grid.length} onChange={handleChangeRowCount} />
+                    stage === "answer" && !("answer-choice" in lockedVariables) &&
+                    <NumberInput id={"answer-choice"} name="# Choices" value={grid.length} onChange={handleAnswerLengthChange} />
+                }
+                {  
+                     !(stage === "answer") && !((stage + "-row") in lockedVariables) && problemCat !== "arc" &&
+                    <NumberInput id={stage + "-row"} name="# Rows" value={grid.length} onChange={handleGridRowChange} />
+                }
+                {  
+                     !(stage === "answer") && !((stage + "-row") in lockedVariables) && problemCat === "arc" &&
+                    <NumberInput id={stage + "-row"} name="# Demonstrations" value={grid.length} onChange={handleGridRowChange} />
                 }
                 {
-                    !inAnswer && !((stage + "-col") in lockedVariables) &&
-                    <NumberInput id={stage + "-col"} name="# Cols" value={grid[0].length} onChange={handleChangeColCount} />
+                    !(stage === "answer") && !((stage + "-col") in lockedVariables) &&
+                    <NumberInput id={stage + "-col"} name="# Cols" value={grid[0].length} onChange={handleGridColChange} />
                 }
             </div>
             {generateGrid()}
