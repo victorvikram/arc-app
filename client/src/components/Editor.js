@@ -100,6 +100,20 @@ export default function Editor() {
     inputs (fields, buttons) call handlers, which translates events into the correct format and calls setters
     if conditions for modification are met
     */
+
+    function handleFileUpload(e) {
+        const fileReader = new FileReader();
+        fileReader.readAsText(e.target.files[0], "UTF-8");
+        fileReader.onload = e => {
+            let content = JSON.parse(e.target.result);
+            if("context" in content) {
+                setStateFromRegFileUpload(content);
+            } else {
+                console.log("handling arc file upload")
+                setStateFromArcFileUpload(content);
+            }
+        };
+    }
     
     // list evt ->
     // handles events from the SelectLists that change the gridType
@@ -379,6 +393,62 @@ export default function Editor() {
         }
     }
 
+    function setStateFromRegFileUpload(content) {
+        let newProblemContext = []
+        for(let i in content["context"]) {
+            let contextGrid = calc2dArrayFromDict(content["context"][i]);
+            newProblemContext.push(contextGrid)
+        }
+        let newProblemQuestions = []
+        let newMultipleChoice;
+        for(let i in content["questions"]) {
+            let stimulusGrid = calc2dArrayFromDict(content["questions"][i]["stimulus"]);
+            console.log(stimulusGrid);
+            let answers;
+            let correct;
+            if(content["questions"][i]["choices"].length === 0) {
+                answers = [content["questions"][i]["answer"]];
+                correct = 0;
+                newMultipleChoice = false;
+            } else {
+                answers = content["questions"][i]["choices"];
+                correct = content["questions"][i]["answer"];
+                newMultipleChoice = true;
+            }
+            newProblemQuestions.push({"stimulus": stimulusGrid, "answer": answers, "correct": correct})
+        }
+        let newProblem = {"context": newProblemContext, "questions": newProblemQuestions};
+        console.log(newProblem);
+        setProblem(newProblem)
+        setProblemId(content["id"]);
+        setProblemCat(content["category"]);
+        setMultipleChoice(newMultipleChoice);
+    }
+
+    function setStateFromArcFileUpload(content) {
+        let contextGrid = [];
+        for(let i in content["train"]) {
+            let input_grid = content["train"][i]["input"];
+            let output_grid = content["train"][i]["output"];
+            contextGrid.push([input_grid, output_grid])
+        }
+        let newProblemContext = [contextGrid];
+        let newProblemQuestions = []
+        for(let i in content["test"]) {
+            let stimulusGrid = [[content["test"][i]["input"]]];
+            console.log(stimulusGrid)
+            let answer = [content["test"][i]["output"]];
+            let correct = 0;
+            newProblemQuestions.push({"stimulus": stimulusGrid, "answer": answer, "correct": correct});
+        }
+        let newProblem = {"context": newProblemContext, "questions": newProblemQuestions};
+    
+        setProblem(newProblem)
+        setProblemId("arc-0");
+        setProblemCat("arc");
+        setMultipleChoice(false);
+    }
+
     // string ->
     // sets all variables to their locked values for the given category 
     function setLockedVariables(cat) {
@@ -471,6 +541,22 @@ export default function Editor() {
         } else if(gridElement.constructor === Array) {
             return "pixels";
         }
+    }
+
+    function calc2dArrayFromDict(dict) {
+        let grid = []
+        let num_cols = dict["cols"]
+        for(let i in dict["items"]) {
+            let row_index = Math.floor(i / num_cols);
+            
+            // start a new row if necessary
+            if(row_index >= grid.length) {
+                grid.push([]);
+            }
+            grid[row_index].push(dict["items"][i]);
+        }
+
+        return grid;
     }
     
     /*
@@ -661,6 +747,7 @@ export default function Editor() {
                     </label>   
                 }
             </div>
+            <FileUpload handleChange={handleFileUpload} />
             <div id="options" className="addPadding">
                 {
                     !("contextLength" in lockedVariables[problemCat]) &&
@@ -721,6 +808,17 @@ export default function Editor() {
             </div>
         </div>
     );
+}
+
+function FileUpload(props) {
+    const {handleChange} = props;
+    return (
+        <div>
+            <h3>Upload problem file</h3>
+            <input type="file" onChange={handleChange} />
+        </div>
+    );
+
 }
 
 export function GridViewer(props) {
