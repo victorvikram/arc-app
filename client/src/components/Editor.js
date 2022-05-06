@@ -161,10 +161,14 @@ export default function Editor() {
     // handles event from input that changes number of rows in a grid
     function handleGridRowChange(indexTrail, event) {
         let newCount = applyBounds(parseInt(event.target.value));
+        console.log(newCount);
         let stage = calcStage(indexTrail);
         if(!(stage + "-row" in lockedVariables[problemCat])) {
             let gridType = calcGridType(calcValFromIndexTrail(indexTrail, problem));
             setGridRowCount(indexTrail, newCount, () => createGridCellByType(gridType));
+        } 
+        else {
+            console.log("was locked");
         }
     }
 
@@ -676,43 +680,73 @@ export default function Editor() {
     synthesizers: STATE-DEPENDENT. Generates some output based on a combination of state variables
     e.g. JSON file representing problem, or a set of InputGrids to edit the problem 
     */
+
+    function makeARCJson() {
+        let ARCJson = {"train": [], "test": []}
+        let examples = problem["context"][0]
+
+        for(let row_index in examples) {
+            let row = examples[row_index];
+            let prob = {"input": row[0], "output": row[1]};
+            ARCJson["train"].push(prob);
+        }
+
+        for(let q_index in problem["questions"]) {
+            let question = problem["questions"][q_index]
+            let prob = {
+                        "input": question["stimulus"][0][0], 
+                        "output": question["answer"][0]
+            };
+            ARCJson["test"].push(prob);
+        }
+
+        return ARCJson;  
+    }
+
     function exportJSON() {
+        console.log("exporting", problemCat)
         let file = {}
         let grid;
         let rows;
         let cols;
         let items;
 
-        file["category"] = problemCat;
-        file["id"] = problemId;
-        file["context"] = [];
-        file["mode"] = multipleChoice ? "discriminate" : "generate";
-        file["answer_type"] = "categorical_list";
+        if(problemCat === "arc") {
+            console.log("arcJSON creating")
+            file = makeARCJson()
+            console.log(file)
+        } else {
+            file["category"] = problemCat;
+            file["id"] = problemId;
+            file["context"] = [];
+            file["mode"] = multipleChoice ? "discriminate" : "generate";
+            file["answer_type"] = "categorical_list";
 
-        for(let gridIndex in problem["context"]) {
-            grid = problem["context"][gridIndex];
-            rows = grid.length;
-            cols = grid[0].length;
-            items = grid.flat()
-            file["context"].push({"rows": rows, "cols": cols, "type": "categorical_list", "items": items});
+            for(let gridIndex in problem["context"]) {
+                grid = problem["context"][gridIndex];
+                rows = grid.length;
+                cols = grid[0].length;
+                items = grid.flat()
+                file["context"].push({"rows": rows, "cols": cols, "type": "categorical_list", "items": items});
+            }
+            file["questions"] = [];
+            let stimulus;
+            let choices;
+            let answer;
+            for(let gridIndex in problem["questions"]) {
+                stimulus = problem["questions"][gridIndex]["stimulus"];
+                rows = stimulus.length;
+                cols = stimulus[0].length;
+                items = stimulus.flat();
+                choices = multipleChoice ? problem["questions"][gridIndex]["answer"] : [];
+                answer = multipleChoice ? problem["questions"][gridIndex]["correct"] : problem["questions"][gridIndex]["answer"][0];
+
+                file["questions"].push({"stimulus": {"rows": rows, "cols": cols, "items": items, "type": "categorical_list"},
+                                        "choices": choices,
+                                        "answer": answer})
+            }
         }
-        file["questions"] = [];
-        let stimulus;
-        let choices;
-        let answer;
-        for(let gridIndex in problem["questions"]) {
-            stimulus = problem["questions"][gridIndex]["stimulus"];
-            rows = stimulus.length;
-            cols = stimulus[0].length;
-            items = stimulus.flat();
-            choices = multipleChoice ? problem["questions"][gridIndex]["answer"] : [];
-            answer = multipleChoice ? problem["questions"][gridIndex]["correct"] : problem["questions"][gridIndex]["answer"][0];
 
-            file["questions"].push({"stimulus": {"rows": rows, "cols": cols, "items": items, "type": "categorical_list"},
-                                    "choices": choices,
-                                    "answer": answer})  
-        } 
-        
         const json = JSON.stringify(file);
         const blob = new Blob([json],{type:'application/json'});
 
