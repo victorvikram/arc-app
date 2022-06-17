@@ -31,24 +31,30 @@ export default function InputGrid(props) {
 
                 console.log(correctAnswer, rowIndex);
                 
+                let answerChangeFunc;
+                if(problemCat === "bongard") {
+                    answerChangeFunc = setCorrectAnswer
+                } else {
+                    answerChangeFunc = () => setCorrectAnswer(rowIndex);
+                }
                 if(useGrid[i][j] != null) {
                     columns.push(
                         <GridCell
                             key={j}
                             type={type}
                             content={calcValFromIndexTrail([rowIndex, colIndex], grid)}
-                            inAnswer={stage === "answer"}
+                            stage={stage}
                             multipleChoice={multipleChoice}
                             correct={stage === "answer" && (correctAnswer === rowIndex)}
-                            setCorrectAnswer={() => setCorrectAnswer(rowIndex)}
+                            setCorrectAnswer={answerChangeFunc}
                             changeWidth={(e) => handleSceneColChange(e, rowIndex, colIndex)}
                             changeHeight={(e) => handleSceneRowChange(e, rowIndex, colIndex)}
                             penColor={penColor}
                             setPixelColor={(newVal, row, col) => setPixelColor(newVal, row, col, rowIndex, colIndex)}
                             setString={(newVal) => setString(newVal, rowIndex, colIndex)}
+                            problemCat={problemCat}
                         />);
                 }
-
             }
             
             rows.push(<div key={i} className="flex-container">{columns}</div>);
@@ -102,7 +108,7 @@ export default function InputGrid(props) {
 }
 
 export function GridCell(props) {
-    const { type, content, inAnswer, multipleChoice, correct, setCorrectAnswer, changeWidth, changeHeight, penColor, setPixelColor, setString} = props;
+    const { type, content, stage, multipleChoice, correct, setCorrectAnswer, changeWidth, changeHeight, penColor, setPixelColor, setString, problemCat} = props;
 
     return (
         <div>
@@ -121,7 +127,12 @@ export function GridCell(props) {
                         setString={setString}
                     />
             }
-            {inAnswer && multipleChoice &&
+            {stage === "stimulus" && (problemCat === "bongard") &&
+                <div>
+                    <SelectList options={["left", "right", "neither"]} selection={["left", "right", "neither"][correct]} onChange={(e) => setCorrectAnswer(["left", "right", "neither"].indexOf(e.target.value))} />
+                </div>
+            }
+            {stage === "answer" && multipleChoice && !(problemCat !== "bongard") &&
                 <div>
                     <label>
                         <input
@@ -131,7 +142,8 @@ export function GridCell(props) {
                         />
                         Correct
                     </label>
-                </div>}
+                </div>
+            }
         </div>
     )
 }
@@ -147,8 +159,8 @@ export function TextEditor(props) {
 
 export function PixelEditor(props) {
     const { pixels, changeHeight, changeWidth, penColor, setPixelColor} = props;
-
     const [dragging, setDragging] = useState(false);
+    let componentRef = React.createRef()
 
     function startDragging(e) {
         e.preventDefault();

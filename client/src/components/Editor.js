@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import "../styles/editor.scss";
 import InputGrid from "./DrawingPanel";
 import {CirclePicker} from "react-color";
+import { exportComponentAsPNG } from "react-component-export-image";
 
 export const colors = ["#000000", "#0068cf", "#ff3937", "#00c443", "#ffd631", "#a0a0a0", "#f916b1", "#ff7a2c", "#63d6fc", "#820f23"]
 
@@ -90,10 +91,36 @@ export default function Editor() {
                                         "stimulus-gridType": "pixels",
                                         "answer-gridType": "pixels"
                                     },
-                                "bongard": {},
+                                "bongard": {
+                                        "contextLength": 2,
+                                        "multipleChoice": true,
+                                        "defaultGridType": "pixels",
+                                        "context-col": 2,
+                                        "context-row": 3,
+                                        "stimulus-col": 1,
+                                        "stimulus-row": 1, 
+                                        "answer-choice": 3, 
+                                        "context-gridType": "pixels",
+                                        "stimulus-gridType": "pixels",
+                                        "answer-gridType": "string",
+                                        "answer-choices": ["left", "right", "neither"]
+                                },
+                                "letter-string": {
+                                        "contextLength": 1,
+                                        "multipleChoice": false,
+                                        "defaultGridType": "string",
+                                        "context-col": 2, 
+                                        "stimulus-col": 1, 
+                                        "stimulus-row": 1,
+                                        "answer-choice": 1, 
+                                        "context-gridType": "string",
+                                        "stimulus-gridType": "string",
+                                        "answer-gridType": "string"
+                                },
                                 "other": {}
                             }
-
+    
+    const componentRef = useRef()
 
     /*
     handlers: STATE-DEPENDENT
@@ -109,7 +136,6 @@ export default function Editor() {
             if("context" in content) {
                 setStateFromRegFileUpload(content);
             } else {
-                console.log("handling arc file upload")
                 setStateFromArcFileUpload(content);
             }
         };
@@ -161,14 +187,10 @@ export default function Editor() {
     // handles event from input that changes number of rows in a grid
     function handleGridRowChange(indexTrail, event) {
         let newCount = applyBounds(parseInt(event.target.value));
-        console.log(newCount);
         let stage = calcStage(indexTrail);
         if(!(stage + "-row" in lockedVariables[problemCat])) {
             let gridType = calcGridType(calcValFromIndexTrail(indexTrail, problem));
             setGridRowCount(indexTrail, newCount, () => createGridCellByType(gridType));
-        } 
-        else {
-            console.log("was locked");
         }
     }
 
@@ -220,8 +242,10 @@ export default function Editor() {
     // handles event from input that changes the number of questions
     function handleQuestionLengthChange(event) {
         let newLength = parseInt(event.target.value);
-        if(!("questionLength" in lockedVariables[problemCat])) {
+        if(!("questionLength" in lockedVariables[problemCat]) && !("answer-choices" in lockedVariables[problemCat])) {
             setArrayLength(["questions"], newLength, () => ({"stimulus": [[createGridCellByType(defaultGridType)]], "answer": [createGridCellByType(defaultGridType)], "correct": 0}));
+        } else if(!("questionLength" in lockedVariables[problemCat])) {
+            setArrayLength(["questions"], newLength, () => ({"stimulus": [[createGridCellByType(defaultGridType)]], "answer": lockedVariables[problemCat]["answer-choices"], "correct": 0}));
         }
 
     }
@@ -263,6 +287,7 @@ export default function Editor() {
     // list int ->
     // sets the correct answer for the question at indexTrail to index
     function setCorrectAnswer(indexTrail, index) {
+        console.log("setting correct answer");
         let newProblem = {...problem};
         let augIndexTrail = [...indexTrail];
         augIndexTrail[2] = "correct";
@@ -317,9 +342,9 @@ export default function Editor() {
 
     // list int [() => gridElement] ->
     // changes the length of an array to newLength, if newLength is longer, the new elements are given by generator
-    function setArrayLength(indexTrail, newLength, generator) {
+    function setArrayLength(indexTrail, newLength, generator, alt) {
         let arr = calcValFromIndexTrail(indexTrail, problem)
-
+        console.log(generator())
         let copyArr = [...arr];
         let difference = newLength - copyArr.length;
 
@@ -330,35 +355,42 @@ export default function Editor() {
                 copyArr.push(generator());
             }
         }
+        
+        console.log(copyArr);
 
-        setProblemGrid(indexTrail, copyArr);
+        let newProblem = setProblemGrid(indexTrail, copyArr, alt);
+
+        return newProblem;
     }
-
+    
     // list int [() => gridElement] ->
     // changes the number of rows in the 2d array at indexTrail, new elements are given by generator
-    function setGridRowCount(indexTrail, newRowCount, generator) {
-        let arr = calcValFromIndexTrail(indexTrail, problem);
+    function setGridRowCount(indexTrail, newRowCount, generator, alt) {
+        let prob = probFromAlt(alt);
+        let arr = calcValFromIndexTrail(indexTrail, prob);
         let copyArr = changeRowCount(arr, newRowCount, generator);
         
-        setProblemGrid(indexTrail, copyArr)
+        return setProblemGrid(indexTrail, copyArr, alt);
     }
 
     // list int [() => gridElement] ->
     // changes the number of cols in the 2d array at indexTrail, new elements are given by generator
-    function setGridColCount(indexTrail, newColCount, generator) {
-        let arr = calcValFromIndexTrail(indexTrail, problem);
+    function setGridColCount(indexTrail, newColCount, generator, alt) {
+        let prob = probFromAlt(alt);
+        let arr = calcValFromIndexTrail(indexTrail, prob);
         let copyArr = changeColCount(arr, newColCount, generator);
         
-        setProblemGrid(indexTrail, copyArr)
+        return setProblemGrid(indexTrail, copyArr, alt);
     }
 
     // list grid ->
     // replaces the grid at indexTrail with newGrid
-    function setProblemGrid(indexTrail, newGrid) {
-
-        let newProblem =  {...problem};
+    function setProblemGrid(indexTrail, newGrid, alt) {
+        let newProblem = probFromAlt(alt);
         changeValFromIndexTrail(indexTrail, newGrid, newProblem);
-        setProblem(newProblem);
+        if(typeof alt === 'undefined') {
+            setProblem(newProblem);
+        }
 
         return newProblem;
     }
@@ -383,17 +415,20 @@ export default function Editor() {
 
     // list string ->
     // sets the grid at indexTrail to have type newType, clears grid of whatever it contains
-    function setGridType(indexTrail, newType) {
-        console.log("new grid type", newType);
-        let grid = calcValFromIndexTrail(indexTrail, problem);
+    function setGridType(indexTrail, newType, alt) {
+        let prob = probFromAlt(alt);
+        let grid = calcValFromIndexTrail(indexTrail, prob);
         let newGrid;
+        
+        console.log(alt);
+        console.log(grid);
 
         if(calcStage(indexTrail) === "answer") {
             newGrid = createGrid(grid.length, null, () => createGridCellByType(newType));
-            setProblemGrid(indexTrail, newGrid);
+            return setProblemGrid(indexTrail, newGrid, alt);
         } else {
             newGrid = createGrid(grid.length, grid[0].length, () => createGridCellByType(newType));
-            setProblemGrid(indexTrail, newGrid);   
+            return setProblemGrid(indexTrail, newGrid, alt);   
         }
     }
 
@@ -407,7 +442,6 @@ export default function Editor() {
         let newMultipleChoice;
         for(let i in content["questions"]) {
             let stimulusGrid = calc2dArrayFromDict(content["questions"][i]["stimulus"]);
-            console.log(stimulusGrid);
             let answers;
             let correct;
             if(content["questions"][i]["choices"].length === 0) {
@@ -422,7 +456,6 @@ export default function Editor() {
             newProblemQuestions.push({"stimulus": stimulusGrid, "answer": answers, "correct": correct})
         }
         let newProblem = {"context": newProblemContext, "questions": newProblemQuestions};
-        console.log(newProblem);
         setProblem(newProblem)
         setProblemId(content["id"]);
         setProblemCat(content["category"]);
@@ -440,7 +473,6 @@ export default function Editor() {
         let newProblemQuestions = []
         for(let i in content["test"]) {
             let stimulusGrid = [[content["test"][i]["input"]]];
-            console.log(stimulusGrid)
             let answer = [content["test"][i]["output"]];
             let correct = 0;
             newProblemQuestions.push({"stimulus": stimulusGrid, "answer": answer, "correct": correct});
@@ -456,46 +488,65 @@ export default function Editor() {
     // string ->
     // sets all variables to their locked values for the given category 
     function setLockedVariables(cat) {
+        let newProblem = {... problem}
         for(let key in lockedVariables[cat]) {
             let keySplit = key.split("-")
             if(key === "contextLength") {
-                setArrayLength(["context"], lockedVariables[cat]["contextLength"], () => [[createGridCellByType(defaultGridType)]]);
+                newProblem = setArrayLength(["context"], lockedVariables[cat]["contextLength"], () => [[createGridCellByType(defaultGridType)]], newProblem);
             } else if(key === "multipleChoice") {
                 setMultipleChoice(lockedVariables[cat]["multipleChoice"]);
             } else if(key === "defaultGridType") {
                 setDefaultGridType(lockedVariables[cat]["defaultGridType"]);
             } else if(keySplit[0] === "context" && ["row", "col"].includes(keySplit[1])) {
-
-                for(let gridIndex in problem["context"]) {
-                    let gridType = calcGridType(calcValFromIndexTrail(["context", gridIndex], problem));
+                let len = newProblem["context"].length;
+                for(let gridIndex = 0; gridIndex < len; gridIndex++) {
+                    let gridType = calcGridType(calcValFromIndexTrail(["context", gridIndex], newProblem));
                     if(keySplit[1] === "row") {
-                        setGridRowCount(["context", gridIndex], lockedVariables[cat]["context-row"], () => createGridCellByType(gridType));
+                        newProblem = setGridRowCount(["context", gridIndex], lockedVariables[cat]["context-row"], () => createGridCellByType(gridType), newProblem);
                     } else if(keySplit[1] === "col") {
-                        setGridColCount(["context", gridIndex], lockedVariables[cat]["context-col"], () => createGridCellByType(gridType));
+                        newProblem = setGridColCount(["context", gridIndex], lockedVariables[cat]["context-col"], () => createGridCellByType(gridType), newProblem);
                     }      
                 }
             } else if(["stimulus", "answer"].includes(keySplit[0]) && ["row", "col"].includes(keySplit[0])) {
-
-                for(let gridIndex in problem["questions"]) {
-                    let gridType = calcGridType(calcValFromIndexTrail(["context", gridIndex], problem));
+                let len = newProblem["questions"].length;
+                for(let gridIndex = 0; gridIndex < len; gridIndex++) {
+                    let gridType = calcGridType(calcValFromIndexTrail(["context", gridIndex], newProblem));
                     if(keySplit[1] === "row") {
-                        setGridRowCount(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-row"], () => createGridCellByType(gridType));
+                        newProblem = setGridRowCount(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-row"], () => createGridCellByType(gridType), newProblem);
                     } else if(keySplit[1] === "col") {
-                        setGridColCount(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-col"], () => createGridCellByType(gridType));
+                        newProblem = setGridColCount(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-col"], () => createGridCellByType(gridType), newProblem);
                     }   
                 }
 
             } else if(keySplit[0] === "context" && keySplit[1] === "gridType") {
-                for(let gridIndex in problem["context"]) {
-                    console.log("changing context grid type");
-                    setGridType(["context", gridIndex], lockedVariables[cat]["context-gridType"]);
+                let len = newProblem["context"].length;
+                for(let gridIndex = 0; gridIndex < len; gridIndex++) {
+                    console.log(newProblem["context"][gridIndex]);
+                    newProblem = setGridType(["context", gridIndex], lockedVariables[cat]["context-gridType"], newProblem);
                 }
             } else if(["stimulus", "answer"].includes(keySplit[0]) && keySplit[1] === "gridType") {
-                for(let gridIndex in problem["context"]) {
-                    setGridType(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-gridType"]);
+                let len = newProblem["questions"].length;
+                for(let gridIndex = 0; gridIndex < len; gridIndex++) {
+                    newProblem = setGridType(["questions", gridIndex, keySplit[0]], lockedVariables[cat][keySplit[0] + "-gridType"], newProblem);
                 }
+            } else if(keySplit[0] === "answer" && keySplit[1] === "choice") {
+                let len = newProblem["questions"].length;
+                for(let gridIndex = 0; gridIndex < len; gridIndex++) {
+                    let gridType = calcGridType(calcValFromIndexTrail(["questions", gridIndex, "answer"], newProblem));
+                    newProblem = setArrayLength(["questions", gridIndex, "answer"], lockedVariables[cat]["answer-choice"], () => createGridCellByType(gridType), newProblem);
+                }
+            } else if(keySplit[0] === "answer" && keySplit[1] === "choices") {
+                let len = newProblem["questions"].length;
+                let choiceLen = newProblem["questions"][0]["answer"].length;
+                for(let gridIndex = 0; gridIndex < len; gridIndex++) {
+                    for(let choiceIndex = 0; choiceIndex < choiceLen; choiceIndex++) {
+                        newProblem["questions"][gridIndex]["answer"][choiceIndex] = lockedVariables[cat]["answer-choices"][choiceIndex];
+                    }
+                }
+
             }
         }
+        setProblem(newProblem);
     }
 
     /*
@@ -650,6 +701,17 @@ export default function Editor() {
     helper functions
     */
 
+    function probFromAlt(alt) {
+        let prob;
+        if(typeof alt === "undefined") {
+            prob = {...problem};
+        } else {
+            prob = alt;
+        }
+
+        return prob;
+    }
+
     // list -> list
     // populates an indexTrail with null values with default values
     function populateIndexTrail(indexTrail) {
@@ -704,7 +766,6 @@ export default function Editor() {
     }
 
     function exportJSON() {
-        console.log("exporting", problemCat)
         let file = {}
         let grid;
         let rows;
@@ -712,9 +773,7 @@ export default function Editor() {
         let items;
 
         if(problemCat === "arc") {
-            console.log("arcJSON creating")
             file = makeARCJson()
-            console.log(file)
         } else {
             file["category"] = problemCat;
             file["id"] = problemId;
@@ -758,15 +817,16 @@ export default function Editor() {
         link.click();
         document.body.removeChild(link);
     }
-    
+
     return (
-        <div id="editor">
+        <div id="editor" ref={componentRef}>
             <h1>ARC Editor</h1>
+            <p>{false && JSON.stringify(problem)}</p>
             <h2>Problem data</h2>
             <div id="options">
                 <label>
                     Category:
-                    <SelectList id="category" options={["bongard", "arc", "other"]} selection={problemCat} onChange={handleCatChange}/>
+                    <SelectList id="category" options={Object.keys(lockedVariables)} selection={problemCat} onChange={handleCatChange}/>
                     
                 </label>
                 <label>
@@ -788,7 +848,7 @@ export default function Editor() {
                     <NumberInput name="# Context" value={problem["context"].length} onChange={handleContextLengthChange} />
                 }
                 {
-                    (problemCat !== "arc") &&
+                    (!["arc", "letter-string"].includes(problemCat)) &&
                     <NumberInput name="# Questions" value={problem["questions"].length} onChange={handleQuestionLengthChange} />
                 }
                 
@@ -839,6 +899,7 @@ export default function Editor() {
                     setString={setString}
                 />
                 <button onClick={exportJSON} className="button">Export JSON</button>
+                <button onClick={() => exportComponentAsPNG(componentRef)}>Export As PNG</button>
             </div>
         </div>
     );
@@ -861,26 +922,59 @@ export function GridViewer(props) {
             handleGridRowChange, handleGridColChange, handleSceneRowChange, handleSceneColChange, 
             penColor, setPixelColor, setString } = props;
     
-    function sideBySideLayout() {
-        let leftSide = [];
-        let rightSide = [];
-        let leftIndexTrails = [["context", 0]]
-        let rightIndexTrails = [];
-        
+    function bongardLayout() {
+        let leftIndexTrails = [["context", 0]];
+        let rightIndexTrails = [["context", 1]];
+        let bottomIndexTrails = [];
+
         for(let gridIndex in problem["questions"]) {
-            rightIndexTrails.push(["questions", gridIndex, "stimulus"]);
-            rightIndexTrails.push(["questions", gridIndex, "answer"]);
+            bottomIndexTrails.push(["questions", gridIndex, "stimulus"]);
         }
 
-        let allIndexTrails = rightIndexTrails.concat(leftIndexTrails)
-        let activeSide;
+        let [leftSide, rightSide, bottomSide] = panelsFromIndexTrailLists([leftIndexTrails, rightIndexTrails, bottomIndexTrails]);
+
+        return (
+            <div>
+                <div className="flex-container">
+                <div>
+                    <h3>Category 1</h3>
+                    {leftSide}
+                </div>
+                <div>
+                    <h3>Category 2</h3>
+                    {rightSide}
+                </div>
+                </div>
+                <NumberInput name="# Tests" value={problem["questions"].length} onChange={handleQuestionLengthChange} />
+                <div className="flex-container">
+                    {bottomSide}
+                </div>
+            </div> 
+        );
+    }
+
+    function panelsFromIndexTrailLists(indexTrailLists) {
+        let allIndexTrails = [];
+        let panels = [];
+        for(let i in indexTrailLists) {
+            allIndexTrails = allIndexTrails.concat(indexTrailLists[i]);
+            panels.push([]);
+        }
 
         for(let i = 0; i < allIndexTrails.length; i++) {
             let indexTrail = allIndexTrails[i];
-            activeSide = leftIndexTrails.includes(indexTrail) ? leftSide : rightSide;
-            let grid = calcValFromIndexTrail(indexTrail, problem);
 
-            activeSide.push(
+            let activePanel;
+            for(let j = 0; j < indexTrailLists.length; j++) {
+                if(indexTrailLists[j].includes(indexTrail)) {
+                    activePanel = panels[j];
+                }
+            }
+
+            let grid = calcValFromIndexTrail(indexTrail, problem);
+            
+            let answerIndexTrail = [indexTrail[0], indexTrail[1], "answer"]
+            activePanel.push(
                 <InputGrid
                     problemCat={problemCat}
                     grid={grid}
@@ -892,7 +986,7 @@ export function GridViewer(props) {
                     handleGridColChange={(e) => handleGridColChange(indexTrail, e)}
                     handleAnswerLengthChange={(e) => handleAnswerLengthChange(indexTrail, e)}
                     correctAnswer={getCorrectAnswer(indexTrail)} 
-                    setCorrectAnswer={(idx) => handleCorrectAnswer(indexTrail, idx)} 
+                    setCorrectAnswer={(idx) => handleCorrectAnswer(answerIndexTrail, idx)} 
                     multipleChoice={multipleChoice} 
                     handleSceneColChange={(e, r, c) => handleSceneColChange(indexTrail, r, c, e)} 
                     handleSceneRowChange={(e, r, c) => handleSceneRowChange(indexTrail, r, c, e)}
@@ -903,8 +997,24 @@ export function GridViewer(props) {
             );
         }
 
-        let modifiedRightSide = [];
+        return panels;
+    }
 
+    function arcLayout() {
+        let leftSide = [];
+        let rightSide = [];
+        let leftIndexTrails = [["context", 0]]
+        let rightIndexTrails = [];
+        
+        for(let gridIndex in problem["questions"]) {
+            rightIndexTrails.push(["questions", gridIndex, "stimulus"]);
+            rightIndexTrails.push(["questions", gridIndex, "answer"]);
+        }
+
+        [leftSide, rightSide] = panelsFromIndexTrailLists([leftIndexTrails, rightIndexTrails]);
+
+    
+        let modifiedRightSide = [];
         for(let i = 0; i < rightSide.length; i = i + 2) {
             modifiedRightSide.push(
                 <div className="flex-container">
@@ -913,26 +1023,29 @@ export function GridViewer(props) {
             )
         }
 
-        return [leftSide, modifiedRightSide];
+        return (
+            <div className="flex-container">
+                <div>
+                    <h3>Demonstrations</h3>
+                    {leftSide}
+                </div>
+                <div>
+                    <h3>Tests</h3>
+                    <NumberInput name="# Tests" value={problem["questions"].length} onChange={handleQuestionLengthChange} />
+                    {modifiedRightSide}
+                </div>
+            </div>
+        );  
 
     }
 
     function makeInputGrids() {
         if(problemCat === "arc") {
-            let [leftSide, rightSide] = sideBySideLayout()
-            return (
-                <div className="flex-container">
-                    <div>
-                        <h3>Demonstrations</h3>
-                        {leftSide}
-                    </div>
-                    <div>
-                        <h3>Tests</h3>
-                        <NumberInput name="# Tests" value={problem["questions"].length} onChange={handleQuestionLengthChange} />
-                        {rightSide}
-                    </div>
-                </div>
-            );  
+            return arcLayout();
+        } else if(problemCat === "bongard") {
+            return bongardLayout();
+        }  else if(problemCat === "letter-string") {
+            return arcLayout();
         } else {
             let inputGrids = [];
             let grid = calcValFromIndexTrail(currentItemIndexTrail, problem);
@@ -943,8 +1056,8 @@ export function GridViewer(props) {
                 type={calcGridType(grid)}
                 lockedVariables={lockedVariables}
                 handleGridTypeChange={(val) => handleGridTypeChange(currentItemIndexTrail, val)}
-                handleChangeRowCount={(e) => handleGridRowChange(currentItemIndexTrail, e)}
-                handleChangeColCount={(e) => handleGridColChange(currentItemIndexTrail, e)}
+                handleGridRowChange={(e) => handleGridRowChange(currentItemIndexTrail, e)}
+                handleGridColChange={(e) => handleGridColChange(currentItemIndexTrail, e)}
                 handleAnswerLengthChange={(e) => handleAnswerLengthChange(currentItemIndexTrail, e)}
                 correctAnswer={getCorrectAnswer(currentItemIndexTrail)} 
                 setCorrectAnswer={(idx) => handleCorrectAnswer(currentItemIndexTrail, idx)} 
@@ -994,7 +1107,7 @@ export function GridMenus(props) {
 
             </div>
             {
-                problemCat !== "arc" &&
+                !["arc", "letter-string"].includes(problemCat) && 
                 <div className="flex-container">
                     {generateIndexTrailSelectLists(indexTrail)}
                 </div>
