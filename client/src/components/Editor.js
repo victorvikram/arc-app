@@ -848,7 +848,7 @@ export default function Editor() {
                     <NumberInput name="# Context" value={problem["context"].length} onChange={handleContextLengthChange} />
                 }
                 {
-                    (!["arc", "letter-string"].includes(problemCat)) &&
+                    (!["arc", "letter-string", "bongard"].includes(problemCat)) &&
                     <NumberInput name="# Questions" value={problem["questions"].length} onChange={handleQuestionLengthChange} />
                 }
                 
