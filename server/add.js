@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Connection URL
-const url = 'mongodb+srv://victorodouard:ObAm1942a@problemcluster.sj2gw.mongodb.net/myFirstDatabase?retryWrites=true&w=majority';
+const url = "";
 const data_dir = '../client/src/fixed_data';
 var files = fs.readdirSync(data_dir);
 var data = []
