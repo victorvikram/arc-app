@@ -14,7 +14,7 @@ app.use(cors());
 const PORT = process.env.PORT || 3001;
 
 
-const connectionString = ""
+const connectionString = "mongodb+srv://victorodouard:ObAm1942a@problemcluster.sj2gw.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
 MongoClient.connect(connectionString, (err, client) => {
 
     if (err) return console.error(err)
