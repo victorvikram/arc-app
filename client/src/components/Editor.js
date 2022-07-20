@@ -3,6 +3,7 @@ import "../styles/editor.scss";
 import InputGrid from "./DrawingPanel";
 import {CirclePicker} from "react-color";
 import { exportComponentAsPNG } from "react-component-export-image";
+import { saveAs } from "file-saver";
 
 export const colors = ["#000000", "#0068cf", "#ff3937", "#00c443", "#ffd631", "#a0a0a0", "#f916b1", "#ff7a2c", "#63d6fc", "#820f23"]
 
@@ -485,10 +486,19 @@ export default function Editor() {
         setMultipleChoice(false);
     }
 
+    function setDefaultProblem() {
+        let newProblem = {"context": [[[createGridCellByType(defaultGridType)]]], 
+                     "questions": [{"stimulus": [[createGridCellByType(defaultGridType)]], "answer": [createGridCellByType(defaultGridType)], "correct": 0}]}
+        setLockedVariables(problemCat, newProblem);
+
+    }
+
     // string ->
     // sets all variables to their locked values for the given category 
-    function setLockedVariables(cat) {
-        let newProblem = {... problem}
+    function setLockedVariables(cat, newProblem = 0) {
+        if(newProblem === 0) {
+            newProblem = {... problem};
+        }
         for(let key in lockedVariables[cat]) {
             let keySplit = key.split("-")
             if(key === "contextLength") {
@@ -810,14 +820,24 @@ export default function Editor() {
         const blob = new Blob([json],{type:'application/json'});
 
         const href = URL.createObjectURL(blob);
+
+        saveAs(href);
+
+        /*
         const link = document.createElement('a');
         link.href = href;
         link.download = "problem.json";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        */
     }
-
+    /*
+    <label>
+        ID:
+        <input type="text" value={problemId} onChange={(e) => setProblemId(e.target.value)} /> 
+    </label>
+    */
     return (
         <div id="editor" ref={componentRef}>
             <h1>ARC Editor</h1>
@@ -829,10 +849,7 @@ export default function Editor() {
                     <SelectList id="category" options={Object.keys(lockedVariables)} selection={problemCat} onChange={handleCatChange}/>
                     
                 </label>
-                <label>
-                    ID:
-                    <input type="text" value={problemId} onChange={(e) => setProblemId(e.target.value)} /> 
-                </label>
+                
                 {
                     !("defaultGridType" in lockedVariables[problemCat]) &&
                     <label>
@@ -842,6 +859,7 @@ export default function Editor() {
                 }
             </div>
             <FileUpload handleChange={handleFileUpload} />
+            <button onClick={setDefaultProblem}>Clear</button>
             <div id="options" className="addPadding">
                 {
                     !("contextLength" in lockedVariables[problemCat]) &&
