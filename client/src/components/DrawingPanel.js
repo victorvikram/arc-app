@@ -12,7 +12,30 @@ import { NumberInput, SelectList, calcValFromIndexTrail } from './Editor';
 
 
 export default function InputGrid(props) {
-    const {problemCat, grid, stage, type, lockedVariables, handleGridTypeChange, handleGridRowChange, handleGridColChange, handleAnswerLengthChange, correctAnswer, setCorrectAnswer, multipleChoice, penColor, setPixelColor, handleSceneRowChange, handleSceneColChange, setString} = props;
+    const {problemCat, grid, setDestToSource, contextRows, testRows, swapAandB, indexTrail, stage, type, lockedVariables, handleGridTypeChange, handleGridRowChange, handleGridColChange, handleAnswerLengthChange, correctAnswer, setCorrectAnswer, multipleChoice, penColor, setPixelColor, handleSceneRowChange, handleSceneColChange, setString} = props;
+    function univSwapRows(rowIndex) {
+
+        if(stage === "context") {
+            let currRowIndexTrail = [...indexTrail];
+            currRowIndexTrail.push(rowIndex);
+            let nextRowIndexTrail = [...indexTrail];
+            nextRowIndexTrail.push(rowIndex + 1);
+            swapAandB(currRowIndexTrail, nextRowIndexTrail)
+        }
+        else if(stage === "answer" || stage === "stimulus") {
+            let currRowIndexTrail = [...indexTrail];
+            let nextRowIndexTrail = [...indexTrail];
+            nextRowIndexTrail[1] = + (( +nextRowIndexTrail[1]) + 1);
+            swapAandB(currRowIndexTrail, nextRowIndexTrail);
+
+            
+            let alt = stage === "stimulus" ? "answer" : "stimulus";
+            let currAltIndexTrail = [indexTrail[0], indexTrail[1], alt];
+            let nextAltIndexTrail = [indexTrail[0], (+ (+ indexTrail[1]) + 1), alt];
+            swapAandB(currAltIndexTrail, nextAltIndexTrail);
+            
+        } 
+    }
     function generateGrid() {
         let useGrid;
         if(stage === "answer") {
@@ -37,11 +60,34 @@ export default function InputGrid(props) {
                 } else {
                     answerChangeFunc = () => setCorrectAnswer(rowIndex);
                 }
+                
+                let fullCurrIndexTrail = indexTrail.concat([rowIndex, colIndex]);
+                let fullCounterpartIndexTrail;
+                let lastRow;
+
+                if(stage === "context") {
+                    fullCounterpartIndexTrail = indexTrail.concat([rowIndex, (+ !colIndex)]);
+                    lastRow = (rowIndex === (contextRows - 1));
+                }
+                else if (stage === "stimulus") {
+                    fullCounterpartIndexTrail = [indexTrail[0], indexTrail[1], "answer", 0];
+                    lastRow = (+ indexTrail[1]) === (testRows - 1);
+                }
+                else if (stage === "answer") {
+                    fullCounterpartIndexTrail = [indexTrail[0], indexTrail[1], "stimulus", 0, 0];
+                    lastRow = (+ indexTrail[1]) === (testRows - 1);
+                }
+
+
+
                 if(useGrid[i][j] != null) {
                     columns.push(
                         <GridCell
                             key={j}
                             type={type}
+                            copyToCounterpart={() => setDestToSource(fullCurrIndexTrail, fullCounterpartIndexTrail)}
+                            displaySwap={!lastRow && stage !== "answer" && colIndex % 2 === 0}
+                            swapWithNext={() => univSwapRows(rowIndex)}
                             content={calcValFromIndexTrail([rowIndex, colIndex], grid)}
                             stage={stage}
                             multipleChoice={multipleChoice}
@@ -108,7 +154,7 @@ export default function InputGrid(props) {
 }
 
 export function GridCell(props) {
-    const { type, content, stage, multipleChoice, correct, setCorrectAnswer, changeWidth, changeHeight, penColor, setPixelColor, setString, problemCat} = props;
+    const { type, content, copyToCounterpart, swapWithNext, displaySwap, stage, multipleChoice, correct, setCorrectAnswer, changeWidth, changeHeight, penColor, setPixelColor, setString, problemCat} = props;
 
     return (
         <div>
@@ -130,6 +176,16 @@ export function GridCell(props) {
             {stage === "stimulus" && (problemCat === "bongard") &&
                 <div>
                     <SelectList options={["left", "right", "neither"]} selection={["left", "right", "neither"][correct]} onChange={(e) => setCorrectAnswer(["left", "right", "neither"].indexOf(e.target.value))} />
+                </div>
+            }
+            {(problemCat === "arc") && 
+                <div>
+                    <button onClick={copyToCounterpart}> Copy to counterpart</button>
+                </div>
+            }
+            {(problemCat === "arc") && displaySwap && 
+                <div>
+                    <button onClick={swapWithNext}>Swap with next</button>
                 </div>
             }
             {stage === "answer" && multipleChoice && !(problemCat !== "bongard") &&

@@ -284,6 +284,23 @@ export default function Editor() {
     /*
     setters; STATE-DEPENDENT. set state variables based on given values.
     */
+    function setDestToSource(indexTrailSource, indexTrailDest) {
+        let newProblem = {...problem};
+        let valToCopy = calcValFromIndexTrail(indexTrailSource, newProblem);
+        changeValFromIndexTrail(indexTrailDest, valToCopy, newProblem);
+        setProblem(newProblem);
+    }
+
+    function swapAandB(aIndexTrail, bIndexTrail) {
+        console.log("swapping", aIndexTrail, bIndexTrail);
+        console.log(problem);
+        let newProblem = {...problem};
+        let aValue = calcValFromIndexTrail(aIndexTrail, newProblem);
+        let bValue = calcValFromIndexTrail(bIndexTrail, newProblem);
+        changeValFromIndexTrail(aIndexTrail, bValue, newProblem);
+        changeValFromIndexTrail(bIndexTrail, aValue, newProblem);
+        setProblem(newProblem);
+    }
 
     // list int ->
     // sets the correct answer for the question at indexTrail to index
@@ -915,6 +932,8 @@ export default function Editor() {
                     penColor={penColor}
                     setPixelColor={setPixelColor}
                     setString={setString}
+                    setDestToSource={setDestToSource}
+                    swapAandB={swapAandB}
                 />
                 <button onClick={exportJSON} className="button">Export JSON</button>
                 <button onClick={() => exportComponentAsPNG(componentRef)}>Export As PNG</button>
@@ -938,7 +957,7 @@ export function GridViewer(props) {
     const { problemCat, problem, currentItemIndexTrail, calcStage, calcGridType, lockedVariables, 
             handleGridTypeChange, handleAnswerLengthChange, handleQuestionLengthChange, handleCorrectAnswer, getCorrectAnswer, multipleChoice,
             handleGridRowChange, handleGridColChange, handleSceneRowChange, handleSceneColChange, 
-            penColor, setPixelColor, setString } = props;
+            penColor, setPixelColor, setString, setDestToSource, swapAandB } = props;
     
     function bongardLayout() {
         let leftIndexTrails = [["context", 0]];
@@ -996,6 +1015,11 @@ export function GridViewer(props) {
                 <InputGrid
                     problemCat={problemCat}
                     grid={grid}
+                    contextRows={problem["context"][0].length}
+                    testRows={problem["questions"].length}
+                    indexTrail={indexTrail}
+                    setDestToSource={(srcIT, dstIT) => setDestToSource(srcIT, dstIT)}
+                    swapAandB={(a, b) => swapAandB(a, b)}
                     stage={calcStage(indexTrail)}
                     type={calcGridType(grid)}
                     lockedVariables={lockedVariables}
@@ -1070,6 +1094,7 @@ export function GridViewer(props) {
             inputGrids.push(<InputGrid 
                 problemCat={problemCat}
                 grid={grid}
+                indexTrail={currentItemIndexTrail}
                 stage={calcStage(currentItemIndexTrail)}
                 type={calcGridType(grid)}
                 lockedVariables={lockedVariables}
