@@ -8,17 +8,17 @@
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^12.8.3",
     "file-saver": "^2.0.5",
-    "node-sass": "^6.0.1",
     "react": "^17.0.2",
     "react-color": "^2.19.3",
     "react-component-export-image": "^1.0.6",
     "react-dom": "^17.0.2",
     "react-scripts": "4.0.3",
+    "sass": "^1.56.0",
     "web-vitals": "^1.1.2"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "react-scripts --openssl-legacy-provider start",
+    "build": "react-scripts --openssl-legacy-provider build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
