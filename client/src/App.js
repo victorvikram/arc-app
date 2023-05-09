@@ -122,7 +122,7 @@ class ProblemViewer extends React.Component {
   constructor(props) {
     super(props)
     var problem_data = fixed_problem == null ? {} : fixed_problem;
-    this.state = {problem_type: "all", problem_type_choices: [""], problem_name: "", problem_choices: [""], problem_data: problem_data, description: ""}
+    this.state = {problem_type: "all", problem_type_choices: [""], problem_name: "", problem_choices: [""], problem_data: problem_data, description: ""} 
     this.handleProblemTypeChange = this.handleProblemTypeChange.bind(this)
     this.handleProblemChange = this.handleProblemChange.bind(this)
   }
@@ -414,10 +414,12 @@ function App() {
 
   return (
     <div className="App">
-      <div>
-        <button onClick={() => setMode("create")} className="button">Creator</button>
-        <button onClick={() => setMode("view")} className="button">Viewer</button>
-      </div>
+      {false && 
+        <div>
+          <button onClick={() => setMode("create")} className="button">Creator</button>
+          <button onClick={() => setMode("view")} className="button">Viewer</button>
+        </div> // PUBLISH change. Hide this
+      }
       {mode === "view" &&
         <ProblemViewer />
       }

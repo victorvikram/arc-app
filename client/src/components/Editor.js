@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import "../styles/editor.scss";
 import InputGrid from "./DrawingPanel";
 import {CirclePicker} from "react-color";
@@ -61,7 +61,7 @@ export function NumberInput(props) {
 export default function Editor() {
 
     const [problemId, setProblemId] = useState("other-0"); // identifier for the problem, saved in exported json
-    const [problemCat, setProblemCat] = useState("other"); // category for the problem, may change the layout of the editor
+    const [problemCat, setProblemCat] = useState("arc"); // category for the problem, may change the layout of the editor. PUBLISH CHANGE: this ARC
     const [defaultGridType, setDefaultGridType] = useState("pixels"); // determines the type of newly created grids
     const [multipleChoice, setMultipleChoice] = useState(false); // determines whether the question is multiple choice
     
@@ -121,6 +121,10 @@ export default function Editor() {
                                 "other": {}
                             }
     
+    useEffect(() => {
+        setLockedVariables("arc")
+    }, []); // publish change: just arc
+
     const componentRef = useRef()
 
     /*
@@ -859,7 +863,9 @@ export default function Editor() {
         <div id="editor" ref={componentRef}>
             <h1>ARC Editor</h1>
             <p>{false && JSON.stringify(problem)}</p>
-            <h2>Problem data</h2>
+            
+            {false && <h2>Problem data</h2>}
+            {false &&
             <div id="options">
                 <label>
                     Category:
@@ -874,7 +880,7 @@ export default function Editor() {
                         <SelectList id="gridCellType" options={["pixels", "string"]} selection={defaultGridType} onChange={handleDefaultGridTypeChange}/>
                     </label>   
                 }
-            </div>
+            </div>}
             <FileUpload handleChange={handleFileUpload} />
             <button onClick={setDefaultProblem}>Clear</button>
             <div id="options" className="addPadding">
@@ -936,7 +942,7 @@ export default function Editor() {
                     swapAandB={swapAandB}
                 />
                 <button onClick={exportJSON} className="button">Export JSON</button>
-                <button onClick={() => exportComponentAsPNG(componentRef)}>Export As PNG</button>
+                <button onClick={() => exportComponentAsPNG(componentRef)} className="button">Export PNG</button>
             </div>
         </div>
     );

@@ -30,15 +30,16 @@
   }
 
   .button {
-    font-size: 1.25rem;
+    font-size: 0.75rem;
     background-color: $red;
     color: $white;
     padding: 1rem 3rem;
     border-radius: 0.25rem;
-    text-transform: uppercase;
     border: 1px solid transparent;
     transition: background-color 0.2s ease-in-out;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    margin-right: 1rem;
 
     &:hover {
       cursor: pointer;
